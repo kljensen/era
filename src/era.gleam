@@ -40,7 +40,12 @@ pub type RelativeTime {
   Today
   Tomorrow
   Yesterday
-  // Relative offsets
+  // Relative offsets (fine-grained)
+  MinutesAgo(Int)
+  MinutesFromNow(Int)
+  HoursAgo(Int)
+  HoursFromNow(Int)
+  // Relative offsets (coarse-grained)
   DaysAgo(Int)
   DaysFromNow(Int)
   WeeksAgo(Int)
@@ -549,6 +554,20 @@ fn last_weekday() -> Parser(DateTime, Token, e) {
 }
 
 /// Parse time unit tokens (singular or plural)
+fn time_unit_minutes() -> Parser(Nil, Token, e) {
+  nibble.one_of([
+    nibble.token(TokMinute),
+    nibble.token(TokMinutes),
+  ])
+}
+
+fn time_unit_hours() -> Parser(Nil, Token, e) {
+  nibble.one_of([
+    nibble.token(TokHour),
+    nibble.token(TokHours),
+  ])
+}
+
 fn time_unit_days() -> Parser(Nil, Token, e) {
   nibble.one_of([
     nibble.token(TokDay),
@@ -577,12 +596,14 @@ fn time_unit_years() -> Parser(Nil, Token, e) {
   ])
 }
 
-/// Parse relative offset: "3 days ago", "2 weeks from now", "in 3 days"
+/// Parse relative offset: "3 days ago", "2 weeks from now", "in 3 days", "30 minutes ago"
 fn relative_offset() -> Parser(DateTime, Token, e) {
   nibble.one_of([
-    // N days/weeks/months/years ago
+    // N minutes/hours/days/weeks/months/years ago
     do(number(), fn(n) {
       do(nibble.one_of([
+        time_unit_minutes() |> nibble.replace("minutes"),
+        time_unit_hours() |> nibble.replace("hours"),
         time_unit_days() |> nibble.replace("days"),
         time_unit_weeks() |> nibble.replace("weeks"),
         time_unit_months() |> nibble.replace("months"),
@@ -590,6 +611,8 @@ fn relative_offset() -> Parser(DateTime, Token, e) {
       ]), fn(unit) {
         do(nibble.token(TokAgo), fn(_) {
           let rel = case unit {
+            "minutes" -> MinutesAgo(n)
+            "hours" -> HoursAgo(n)
             "days" -> DaysAgo(n)
             "weeks" -> WeeksAgo(n)
             "months" -> MonthsAgo(n)
@@ -605,9 +628,11 @@ fn relative_offset() -> Parser(DateTime, Token, e) {
       })
     }),
 
-    // N days/weeks/months/years from now
+    // N minutes/hours/days/weeks/months/years from now
     do(number(), fn(n) {
       do(nibble.one_of([
+        time_unit_minutes() |> nibble.replace("minutes"),
+        time_unit_hours() |> nibble.replace("hours"),
         time_unit_days() |> nibble.replace("days"),
         time_unit_weeks() |> nibble.replace("weeks"),
         time_unit_months() |> nibble.replace("months"),
@@ -616,6 +641,8 @@ fn relative_offset() -> Parser(DateTime, Token, e) {
         do(nibble.token(TokFrom), fn(_) {
           do(nibble.optional(nibble.token(TokNow)), fn(_) {
             let rel = case unit {
+              "minutes" -> MinutesFromNow(n)
+              "hours" -> HoursFromNow(n)
               "days" -> DaysFromNow(n)
               "weeks" -> WeeksFromNow(n)
               "months" -> MonthsFromNow(n)
@@ -632,16 +659,20 @@ fn relative_offset() -> Parser(DateTime, Token, e) {
       })
     }),
 
-    // "in N days/weeks/months/years"
+    // "in N minutes/hours/days/weeks/months/years"
     do(nibble.token(TokIn), fn(_) {
       do(number(), fn(n) {
         do(nibble.one_of([
+          time_unit_minutes() |> nibble.replace("minutes"),
+          time_unit_hours() |> nibble.replace("hours"),
           time_unit_days() |> nibble.replace("days"),
           time_unit_weeks() |> nibble.replace("weeks"),
           time_unit_months() |> nibble.replace("months"),
           time_unit_years() |> nibble.replace("years"),
         ]), fn(unit) {
           let rel = case unit {
+            "minutes" -> MinutesFromNow(n)
+            "hours" -> HoursFromNow(n)
             "days" -> DaysFromNow(n)
             "weeks" -> WeeksFromNow(n)
             "months" -> MonthsFromNow(n)
