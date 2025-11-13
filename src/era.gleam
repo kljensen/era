@@ -810,14 +810,21 @@ fn absolute_date() -> Parser(DateTime, Token, e) {
     }),
 
     // "08/25/2006" or "8/25" (MM/DD or MM/DD/YYYY)
-    do(number(), fn(m) {
+    // Smart UK/GB format detection: if first number > 12, it's DD/MM (UK)
+    // Otherwise, assume MM/DD (US) - ambiguous dates like 01/02 default to US
+    do(number(), fn(first) {
       do(nibble.token(Slash), fn(_) {
-        do(number(), fn(day) {
+        do(number(), fn(second) {
           do(nibble.optional(nibble.token(Slash)), fn(_) {
             do(nibble.optional(number()), fn(maybe_year) {
+              // Smart format detection
+              let #(month, day) = case first > 12 {
+                True -> #(second, first)  // DD/MM (UK format)
+                False -> #(first, second)  // MM/DD (US format)
+              }
               return(DateTime(
                 year: maybe_year,
-                month: Some(m),
+                month: Some(month),
                 day: Some(day),
                 hour: None,
                 minute: None,

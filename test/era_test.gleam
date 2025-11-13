@@ -2358,6 +2358,273 @@ pub fn parse_extracted_precise_time_test() {
 }
 
 // ============================================================================
+// MASSIVE "IN THE WILD" TEST SUITE - Real-world text scenarios
+// ============================================================================
+
+// Email scenarios
+pub fn parse_wild_email_meeting_request_test() {
+  let result = era.parse("Hi John, can we schedule a call for next Wednesday at 2pm? Thanks!")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_email_availability_test() {
+  let result = era.parse("I'm free tomorrow afternoon if you want to chat")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_email_deadline_test() {
+  let result = era.parse("The report is due in 3 days, please have it ready by then.")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_email_followup_test() {
+  let result = era.parse("Following up on our conversation from 2 days ago...")
+  result |> should.be_ok
+}
+
+// Slack/Chat scenarios
+pub fn parse_wild_slack_standup_test() {
+  let result = era.parse("@channel standup in 10 minutes!")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_slack_meeting_test() {
+  let result = era.parse("Quick sync at 3:30pm in room 204?")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_slack_eta_test() {
+  let result = era.parse("Sorry running late, will be there in 5 minutes")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_slack_lunch_test() {
+  let result = era.parse("Anyone want to grab lunch at noon?")
+  result |> should.be_ok
+}
+
+// Calendar invites
+pub fn parse_wild_calendar_weekly_test() {
+  let result = era.parse("Weekly team standup - every Monday at 9am")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_calendar_biweekly_test() {
+  let result = era.parse("1-on-1 meeting every other Tuesday at 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_calendar_workshop_test() {
+  let result = era.parse("Design workshop next Friday from 10am to 4pm")
+  result |> should.be_ok
+}
+
+// SMS/Text messages
+pub fn parse_wild_sms_dinner_test() {
+  let result = era.parse("Want to get dinner tonight at 7pm?")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_sms_movie_test() {
+  let result = era.parse("Movie starts at 8:15pm, meet outside at 8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_sms_pickup_test() {
+  let result = era.parse("Can you pick me up tomorrow morning at 6:30am?")
+  result |> should.be_ok
+}
+
+// Social media posts
+pub fn parse_wild_twitter_event_test() {
+  let result = era.parse("Join us for the webinar on Thursday at 2pm EST!")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_facebook_party_test() {
+  let result = era.parse("Birthday party this Saturday at 7pm! Everyone's invited")
+  result |> should.be_ok
+}
+
+// Task management
+pub fn parse_wild_todo_urgent_test() {
+  let result = era.parse("URGENT: Fix production bug by tonight")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_todo_deadline_test() {
+  let result = era.parse("Submit proposal by Friday 5pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_todo_reminder_test() {
+  let result = era.parse("Remember to call dentist tomorrow")
+  result |> should.be_ok
+}
+
+// Doctor/Medical
+pub fn parse_wild_doctor_appointment_test() {
+  let result = era.parse("Your appointment is scheduled for next Tuesday at 10:30am")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_prescription_test() {
+  let result = era.parse("Take medication daily at 8am and 8pm")
+  result |> should.be_ok
+}
+
+// Travel/Transportation
+pub fn parse_wild_flight_test() {
+  let result = era.parse("Flight departs tomorrow at 6:45am from gate B12")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_train_test() {
+  let result = era.parse("Next train to Boston leaves in 20 minutes")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_uber_test() {
+  let result = era.parse("Your ride will arrive in 3 minutes")
+  result |> should.be_ok
+}
+
+// Work/Professional
+pub fn parse_wild_interview_test() {
+  let result = era.parse("Interview scheduled for Monday, March 15 at 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_presentation_test() {
+  let result = era.parse("You're presenting on Wednesday from 3-4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_code_review_test() {
+  let result = era.parse("Code review meeting every Thursday at 11am")
+  result |> should.be_ok
+}
+
+// Personal/Social
+pub fn parse_wild_gym_schedule_test() {
+  let result = era.parse("Gym class Mon/Wed/Fri at 6am")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_coffee_test() {
+  let result = era.parse("Coffee tomorrow at 10am at the usual spot?")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_lunch_date_test() {
+  let result = era.parse("Let's do lunch next week, how about Tuesday at 12:30pm?")
+  result |> should.be_ok
+}
+
+// UK/GB date format tests
+pub fn parse_wild_uk_date_explicit_test() {
+  let result = era.parse("Meeting on 25/12/2024 at 2pm")  // DD/MM/YYYY
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.day |> should.equal(Some(25))
+        dt.month |> should.equal(Some(12))
+        dt.year |> should.equal(Some(2024))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_wild_uk_date_ambiguous_test() {
+  let result = era.parse("Deadline is 03/04/2024")  // Ambiguous, defaults to US (March 4)
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(3))  // US format
+        dt.day |> should.equal(Some(4))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Emoji tests (emojis as unknown tokens should be skipped)
+pub fn parse_wild_emoji_calendar_test() {
+  let result = era.parse("📅 Meeting tomorrow at 3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_emoji_clock_test() {
+  let result = era.parse("⏰ Reminder: standup in 5 minutes")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_emoji_party_test() {
+  let result = era.parse("🎉 Party this Friday at 8pm!")
+  result |> should.be_ok
+}
+
+// Complex punctuation
+pub fn parse_wild_parentheses_test() {
+  let result = era.parse("Meeting (rescheduled) now at 4pm instead of 3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_quotes_test() {
+  let result = era.parse("She said \"meet me at 5pm\" so I'll be there")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_brackets_test() {
+  let result = era.parse("[URGENT] Deploy by tomorrow at midnight")
+  result |> should.be_ok
+}
+
+// Casual/Informal
+pub fn parse_wild_casual_tonight_test() {
+  let result = era.parse("wanna hang tonight at like 9pm or something?")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_casual_weekend_test() {
+  let result = era.parse("lets do smth this saturday afternoon")
+  result |> should.be_ok
+}
+
+// Multiple dates in same text (should parse first one)
+pub fn parse_wild_multiple_dates_test() {
+  let result = era.parse("Meeting moved from Monday to Wednesday at 2pm")
+  result |> should.be_ok  // Should find "Monday" or "Wednesday at 2pm"
+}
+
+// Edge cases with numbers
+pub fn parse_wild_age_and_time_test() {
+  let result = era.parse("My son is 5 years old, party at 3pm tomorrow")
+  result |> should.be_ok  // Should find "3pm tomorrow", not "5 years"
+}
+
+pub fn parse_wild_address_and_time_test() {
+  let result = era.parse("Meet at 123 Main St tomorrow at 10am")
+  result |> should.be_ok
+}
+
+// Common abbreviations
+pub fn parse_wild_abbrev_dept_test() {
+  let result = era.parse("Dept. meeting next Mon at 9am")
+  result |> should.be_ok
+}
+
+pub fn parse_wild_abbrev_appt_test() {
+  let result = era.parse("Appt scheduled for Tue at 2:30pm")
+  result |> should.be_ok
+}
+
+// ============================================================================
 // EXPECTED FAILURES - Cases we can't/shouldn't handle
 // ============================================================================
 
