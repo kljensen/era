@@ -6,6 +6,8 @@ Era is a [gleam](https://gleam.run/) library for parsing natural dates like "nex
 * Time ranges, like "next Tuesday 4-5pm"
 * Recurrances of either of those "every Tuesday 4-5pm until March"
 
+As much as possible, the library uses parser combinators from [nibble](https://github.com/hayleigh-dot-dev/nibble). The library has extensive tests lifted from related projects (see below).
+
 ## Hex
 
 [![Package Version](https://img.shields.io/hexpm/v/era)](https://hex.pm/packages/era)
