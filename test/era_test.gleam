@@ -2010,34 +2010,74 @@ pub fn parse_sept_test() {
 // ============================================================================
 // REALISTIC EMAIL/CHAT DIALOG TEST CASES
 // ============================================================================
-// These test cases demonstrate the library's limitations with embedded dates
-// in prose. The current parser expects clean date expressions, not extraction
-// from natural text. In a real application, you'd extract the date portion first.
+// These test cases demonstrate the library's ability to extract dates from
+// text "in the wild" - real emails, chat messages, and prose with dates embedded!
 
-// EXPECTED FAILURE: Parser doesn't handle text embedding
-pub fn parse_email_embedded_date_expected_fail_test() {
+// ✅ NOW WORKS: Parser extracts dates from text!
+pub fn parse_email_embedded_date_test() {
   let result = era.parse("Hey can we meet tomorrow at 3pm to discuss the proposal?")
-  // EXPECTED FAILURE: Contains words "Hey", "can", "we", "meet", "to", "discuss", etc.
-  // Parser expects clean expressions like "tomorrow at 3pm", not embedded in prose
-  result |> should.be_error
+  // Parser should now extract "tomorrow at 3pm" from the text
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
-pub fn parse_email_embedded_time_range_expected_fail_test() {
+pub fn parse_email_embedded_time_range_test() {
   let result = era.parse("I'm available 2-4pm if that works for you")
-  // EXPECTED FAILURE: Extra words before and after the time range
-  result |> should.be_error
+  // Extracts "2-4pm" time range from text
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(14))
+        tr.end.hour |> should.equal(Some(16))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
 }
 
-pub fn parse_slack_reminder_expected_fail_test() {
+pub fn parse_slack_reminder_test() {
   let result = era.parse("Reminder: standup in 15 minutes!")
-  // EXPECTED FAILURE: Contains "Reminder:", "standup", and "!"
-  result |> should.be_error
+  // Extracts "in 15 minutes" from Slack message
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(15)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
-pub fn parse_calendar_invite_expected_fail_test() {
+pub fn parse_calendar_invite_test() {
   let result = era.parse("Team sync every Tuesday and Thursday at 10am starting next week")
-  // EXPECTED FAILURE: Contains "Team", "sync", "starting", "week"
-  result |> should.be_error
+  // Extracts recurring meeting from calendar invite
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          EveryWeekday(days) -> days |> should.equal([Tuesday, Thursday])
+          _ -> panic as "Expected EveryWeekday"
+        }
+        re.time.hour |> should.equal(Some(10))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
 }
 
 // BUT - these CLEAN expressions work (what you'd extract):

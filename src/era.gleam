@@ -337,6 +337,25 @@ pub fn lexer() -> lexer.Lexer(Token, Nil) {
     lexer.keyword("nov", "NOV", TokNovember),
     lexer.keyword("december", "DECEMBER", TokDecember),
     lexer.keyword("dec", "DEC", TokDecember),
+
+    // Catch-all for unknown words (MUST be last to not shadow keywords)
+    lexer.identifier(
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'",
+      Unknown
+    ),
+    // Unknown punctuation (!, ?, ;, etc.)
+    lexer.token("?", fn(_) { Unknown("?") }),
+    lexer.token("!", fn(_) { Unknown("!") }),
+    lexer.token(";", fn(_) { Unknown(";") }),
+    lexer.token("(", fn(_) { Unknown("(") }),
+    lexer.token(")", fn(_) { Unknown(")") }),
+    lexer.token("[", fn(_) { Unknown("[") }),
+    lexer.token("]", fn(_) { Unknown("]") }),
+    lexer.token("{", fn(_) { Unknown("{") }),
+    lexer.token("}", fn(_) { Unknown("}") }),
+    lexer.token("'", fn(_) { Unknown("'") }),
+    lexer.token("\"", fn(_) { Unknown("\"") }),
   ])
   |> lexer.ignore(whitespace)
 }
@@ -344,6 +363,17 @@ pub fn lexer() -> lexer.Lexer(Token, Nil) {
 // ============================================================================
 // PARSER COMBINATORS
 // ============================================================================
+
+/// Skip any number of Unknown word tokens
+fn skip_unknown() -> Parser(Nil, Token, e) {
+  nibble.many(nibble.take_if(fn(token) {
+    case token {
+      Unknown(_) -> Ok(Nil)
+      _ -> Error(Nil)
+    }
+  }))
+  |> nibble.replace(Nil)
+}
 
 /// Parse a weekday token
 fn weekday() -> Parser(Weekday, Token, e) {
@@ -1095,16 +1125,27 @@ fn recurrence_pattern() -> Parser(RecurringEvent, Token, e) {
 }
 
 /// Main parser that handles all cases
+/// Helper: wrap a parser to skip unknown tokens before and after
+fn extract(parser: Parser(a, Token, e)) -> Parser(a, Token, e) {
+  do(skip_unknown(), fn(_) {
+    do(parser, fn(result) {
+      do(skip_unknown(), fn(_) {
+        return(result)
+      })
+    })
+  })
+}
+
 fn date_expression() -> Parser(ParsedDate, Token, e) {
   nibble.one_of([
-    // Try recurrence patterns first
-    recurrence_pattern() |> nibble.map(Recurring),
+    // Try recurrence patterns first (skip unknown tokens around them)
+    extract(recurrence_pattern()) |> nibble.map(Recurring),
     // Try time ranges
-    time_range() |> nibble.map(Range),
+    extract(time_range()) |> nibble.map(Range),
     // Try multiple points
-    multiple_points() |> nibble.map(MultiplePoints),
+    extract(multiple_points()) |> nibble.map(MultiplePoints),
     // Then single point
-    single_point() |> nibble.map(SinglePoint),
+    extract(single_point()) |> nibble.map(SinglePoint),
   ])
 }
 
