@@ -1,9 +1,10 @@
 import era.{
   type DateTime, type ParsedDate, type Recurrence, type RecurringEvent,
   type TimeRange, type Weekday, Daily, DateTime, DaysAgo, DaysFromNow,
-  EveryWeekday, Friday, Monday, MultiplePoints, NextWeekday, Range, Recurring,
-  RecurringEvent, SinglePoint, Thursday, TimeRange, Today, Tomorrow, Tuesday,
-  Wednesday, WeeksAgo, WeeksFromNow, Yesterday,
+  EveryWeekday, Friday, HoursAgo, HoursFromNow, MinutesAgo, MinutesFromNow,
+  Monday, MultiplePoints, NextWeekday, Range, Recurring, RecurringEvent,
+  SinglePoint, Thursday, TimeRange, Today, Tomorrow, Tuesday, Wednesday,
+  WeeksAgo, WeeksFromNow, Yesterday,
 }
 import gleam/option.{None, Some}
 import gleeunit
@@ -928,4 +929,173 @@ pub fn parse_23_59_test() {
     second: Some(0),
     relative: Some(Today),
   )))
+}
+
+// ============================================================================
+// FINE-GRAINED TIME UNIT TESTS (minutes and hours)
+// ============================================================================
+
+pub fn parse_30_minutes_ago_test() {
+  let result = era.parse("30 minutes ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesAgo(30)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_15_minutes_test() {
+  let result = era.parse("in 15 minutes")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(15)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_2_hours_ago_test() {
+  let result = era.parse("2 hours ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursAgo(2)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_3_hours_test() {
+  let result = era.parse("in 3 hours")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursFromNow(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_1_hour_ago_test() {
+  let result = era.parse("1 hour ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursAgo(1)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// HH:MM:SS TIME FORMAT TESTS
+// ============================================================================
+
+pub fn parse_14_30_45_test() {
+  let result = era.parse("14:30:45")
+  result
+  |> should.be_ok
+  |> should.equal(SinglePoint(DateTime(
+    year: None,
+    month: None,
+    day: None,
+    hour: Some(14),
+    minute: Some(30),
+    second: Some(45),
+    relative: Some(Today),
+  )))
+}
+
+pub fn parse_3_45_30_pm_test() {
+  let result = era.parse("3:45:30 PM")
+  result
+  |> should.be_ok
+  |> should.equal(SinglePoint(DateTime(
+    year: None,
+    month: None,
+    day: None,
+    hour: Some(15),
+    minute: Some(45),
+    second: Some(30),
+    relative: Some(Today),
+  )))
+}
+
+pub fn parse_12_00_00_am_test() {
+  let result = era.parse("12:00:00 am")
+  result
+  |> should.be_ok
+  |> should.equal(SinglePoint(DateTime(
+    year: None,
+    month: None,
+    day: None,
+    hour: Some(0),
+    minute: Some(0),
+    second: Some(0),
+    relative: Some(Today),
+  )))
+}
+
+// ============================================================================
+// "IN N DAYS" SYNTAX TESTS
+// ============================================================================
+
+pub fn parse_in_3_days_test() {
+  let result = era.parse("in 3 days")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysFromNow(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_2_weeks_test() {
+  let result = era.parse("in 2 weeks")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(WeeksFromNow(2)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_1_month_test() {
+  let result = era.parse("in 1 month")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.MonthsFromNow(1)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
