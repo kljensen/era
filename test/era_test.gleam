@@ -2066,8 +2066,16 @@ pub fn parse_extracted_2_4pm_range_test() {
   |> fn(parsed) {
     case parsed {
       Range(tr) -> {
+        // Time values
         tr.start.hour |> should.equal(Some(14))
         tr.end.hour |> should.equal(Some(16))
+        // Defaults to Today when no day is specified
+        tr.start.relative |> should.equal(Some(Today))
+        tr.end.relative |> should.equal(Some(Today))
+        // No specific date fields
+        tr.start.year |> should.equal(None)
+        tr.start.month |> should.equal(None)
+        tr.start.day |> should.equal(None)
       }
       _ -> panic as "Expected Range"
     }
