@@ -3069,6 +3069,1770 @@ pub fn parse_wild_abbrev_appt_test() {
 }
 
 // ============================================================================
+// PARTICULAR TIMES - 50 tests with multiple times per sentence
+// ============================================================================
+
+pub fn parse_times_double_appointment_test() {
+  let result = era.parse("Doctor at 9am, then dentist at 2pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(9))
+      MultiplePoints(dates) -> dates |> list.length |> should.equal(2)
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_meeting_series_test() {
+  let result = era.parse("Meetings at 10am, 11:30am, and 3pm today")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(10))
+      MultiplePoints(_) -> Nil
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_shift_schedule_test() {
+  let result = era.parse("Morning shift 6am-2pm, evening shift 2pm-10pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(6))
+        tr.end.hour |> should.equal(Some(14))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_precise_schedule_test() {
+  let result = era.parse("Breakfast 7:30am, lunch 12:15pm, dinner 6:45pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(7))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_tomorrow_multiple_test() {
+  let result = era.parse("Tomorrow I have calls at 9am, 11am, and 4pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(9))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_next_week_test() {
+  let result = era.parse("Next Monday at 10am, Wednesday at 2pm, Friday at 4pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Monday)))
+      }
+      MultiplePoints(_) -> Nil
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_conference_schedule_test() {
+  let result = era.parse("Keynote at 9am, breakout sessions 10:30am-12pm, lunch 12-1pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(9))
+      Range(_) -> Nil
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_travel_itinerary_test() {
+  let result = era.parse("Depart 6:15am, layover 11am-1pm, arrive 5:30pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(6))
+        dt.minute |> should.equal(Some(15))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_workout_plan_test() {
+  let result = era.parse("Cardio 6am, weights 7am, yoga 8am every morning")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(6))
+      Recurring(_) -> Nil
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_medication_schedule_test() {
+  let result = era.parse("Take pills at 8am, 2pm, and 8pm daily")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(8))
+      Recurring(_) -> Nil
+      MultiplePoints(_) -> Nil
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_class_schedule_test() {
+  let result = era.parse("Math 9am, Science 10:30am, Lunch 12pm, History 1:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_interview_day_test() {
+  let result = era.parse("Phone screen tomorrow at 10am, technical interview at 2pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(10))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_reminder_chain_test() {
+  let result = era.parse("Reminder in 5 minutes, another in 15 minutes, final in 30 minutes")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.relative |> should.equal(Some(MinutesFromNow(5)))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_office_hours_test() {
+  let result = era.parse("Available Monday 9am-11am, Wednesday 2pm-4pm, Friday 10am-12pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_appointment_conflict_test() {
+  let result = era.parse("Meeting moved from 2pm to 4pm tomorrow")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        case dt.hour {
+          Some(14) -> Nil  // 2pm
+          Some(16) -> Nil  // 4pm
+          _ -> panic as "Expected 2pm or 4pm"
+        }
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_phone_tag_test() {
+  let result = era.parse("Called at 10am, left message at 11:30am, callback expected 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_deadline_cascade_test() {
+  let result = era.parse("Draft due 9am, review by noon, final by 5pm today")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Today))
+        dt.hour |> should.equal(Some(9))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_webinar_schedule_test() {
+  let result = era.parse("Session 1 at 10am EST, Session 2 at 2pm EST, Q&A at 4pm EST")
+  result |> should.be_ok
+}
+
+pub fn parse_times_sports_schedule_test() {
+  let result = era.parse("Warmup 5:30pm, game starts 6pm, ends around 8pm tonight")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(17))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_birthday_party_test() {
+  let result = era.parse("Arrive Saturday at 7pm, cake at 8pm, fireworks at 9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_delivery_window_test() {
+  let result = era.parse("Package arriving between 10am and 2pm tomorrow")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(10))
+        tr.end.hour |> should.equal(Some(14))
+      }
+      SinglePoint(dt) -> dt.relative |> should.equal(Some(Tomorrow))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_museum_visit_test() {
+  let result = era.parse("Entry 10am, guided tour 11am, lunch break 1pm, exit 4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_cooking_schedule_test() {
+  let result = era.parse("Prep starts 4pm, cooking 5pm, serving at 6:30pm tonight")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(16))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_exam_schedule_test() {
+  let result = era.parse("Exam Monday 9am-11am, results Friday at 3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_haircut_wait_test() {
+  let result = era.parse("Appointment at 2pm but usually runs 15-30 minutes late")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(14))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_conference_call_test() {
+  let result = era.parse("Call starts 9am Pacific, 12pm Eastern, 5pm London time")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(9))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_movie_marathon_test() {
+  let result = era.parse("First movie 7pm, second 9:30pm, third midnight")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(19))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_baby_feeding_test() {
+  let result = era.parse("Fed at 6am, 9am, noon, 3pm, and 6pm today")
+  result |> should.be_ok
+}
+
+pub fn parse_times_train_connections_test() {
+  let result = era.parse("Depart 8:15am, transfer 9:45am, arrive 11:20am tomorrow")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_vet_appointments_test() {
+  let result = era.parse("Cat checkup Tuesday 10am, dog grooming Thursday 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_rehearsal_schedule_test() {
+  let result = era.parse("Act 1 rehearsal 6pm, Act 2 at 7:30pm, full run 9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_court_appearance_test() {
+  let result = era.parse("Arraignment Monday 9am, hearing Wednesday 2pm, trial Friday 10am")
+  result |> should.be_ok
+}
+
+pub fn parse_times_surgery_schedule_test() {
+  let result = era.parse("Pre-op 6am, surgery 8am, recovery 10am-2pm tomorrow")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_times_market_hours_test() {
+  let result = era.parse("Market opens 9:30am, lunch 12-1pm, closes 4pm weekdays")
+  result |> should.be_ok
+}
+
+pub fn parse_times_festival_lineup_test() {
+  let result = era.parse("Gates open 4pm, opening act 6pm, headliner 9pm Saturday")
+  result |> should.be_ok
+}
+
+pub fn parse_times_cleaning_schedule_test() {
+  let result = era.parse("Kitchen 9am, bathrooms 10:30am, bedrooms 1pm, living room 3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_tutoring_sessions_test() {
+  let result = era.parse("Math Monday 4pm, Science Wednesday 4pm, English Friday 4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_tv_schedule_test() {
+  let result = era.parse("News at 6pm, sitcom 7pm, drama 8pm, late show 11pm tonight")
+  result |> should.be_ok
+}
+
+pub fn parse_times_bakery_fresh_test() {
+  let result = era.parse("Bread ready 6am, pastries 7am, cakes 10am daily")
+  result |> should.be_ok
+}
+
+pub fn parse_times_parking_meter_test() {
+  let result = era.parse("Parked at 10:15am, meter expires 12:15pm, need to move by 12:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_church_services_test() {
+  let result = era.parse("Early service 8am, main service 10:30am, evening service 6pm Sunday")
+  result |> should.be_ok
+}
+
+pub fn parse_times_nap_schedule_test() {
+  let result = era.parse("Morning nap 10am-11am, afternoon nap 2pm-3:30pm every day")
+  result |> should.be_ok
+}
+
+pub fn parse_times_prescription_refill_test() {
+  let result = era.parse("Call pharmacy at 9am, pick up between 2pm-5pm today")
+  result |> should.be_ok
+}
+
+pub fn parse_times_dog_walker_test() {
+  let result = era.parse("Walker comes 11am weekdays, noon on weekends")
+  result |> should.be_ok
+}
+
+pub fn parse_times_guitar_practice_test() {
+  let result = era.parse("Scales 30 minutes at 5pm, songs 6pm-7pm, free play 7pm-8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_car_service_test() {
+  let result = era.parse("Drop off 8am, oil change 9am, tire rotation 10am, pickup noon")
+  result |> should.be_ok
+}
+
+pub fn parse_times_zoom_marathon_test() {
+  let result = era.parse("Standup 9am, sprint planning 10am, retrospective 2pm, 1-on-1s 4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_times_laundry_day_test() {
+  let result = era.parse("Wash starts 9am, transfer to dryer 10am, fold 11am, put away noon")
+  result |> should.be_ok
+}
+
+// ============================================================================
+// DATE RANGES - 50 tests
+// ============================================================================
+
+pub fn parse_range_vacation_week_test() {
+  let result = era.parse("On vacation from Monday to Friday next week")
+  result |> should.be_ok
+}
+
+pub fn parse_range_conference_days_test() {
+  let result = era.parse("Conference runs Tuesday through Thursday")
+  result |> should.be_ok
+}
+
+pub fn parse_range_project_timeline_test() {
+  let result = era.parse("Development phase March 1-15, testing March 16-31")
+  result |> should.be_ok
+}
+
+pub fn parse_range_office_hours_daily_test() {
+  let result = era.parse("Office hours 9am-5pm Monday through Friday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(9))
+        tr.end.hour |> should.equal(Some(17))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_happy_hour_test() {
+  let result = era.parse("Happy hour 4-7pm weekdays")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(16))
+        tr.end.hour |> should.equal(Some(19))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+pub fn parse_range_breakfast_service_test() {
+  let result = era.parse("Breakfast served 6:30am to 10:30am daily")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(6))
+        tr.start.minute |> should.equal(Some(30))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_gym_open_test() {
+  let result = era.parse("Gym open 5am-11pm seven days a week")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(5))
+        tr.end.hour |> should.equal(Some(23))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_quiet_hours_test() {
+  let result = era.parse("Quiet hours 10pm-7am in the building")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(22))
+        tr.end.hour |> should.equal(Some(7))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+pub fn parse_range_lunch_shift_test() {
+  let result = era.parse("Lunch shift covers 11:30am through 2:30pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(11))
+        tr.start.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+pub fn parse_range_pool_hours_test() {
+  let result = era.parse("Pool hours 10am to 8pm Memorial Day through Labor Day")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(10))
+        tr.end.hour |> should.equal(Some(20))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_store_sale_test() {
+  let result = era.parse("Sale runs Friday 9am through Sunday 9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_parking_restricted_test() {
+  let result = era.parse("No parking 7am-9am and 4pm-6pm weekdays")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(7))
+        tr.end.hour |> should.equal(Some(9))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_workshop_duration_test() {
+  let result = era.parse("Workshop Saturday 10am-4pm with lunch 12-1pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_library_open_test() {
+  let result = era.parse("Library 8am-9pm Mon-Thu, 8am-5pm Fri-Sat, closed Sunday")
+  result |> should.be_ok
+}
+
+pub fn parse_range_call_center_test() {
+  let result = era.parse("Call center available 6am-midnight ET daily")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(6))
+        tr.end.hour |> should.equal(Some(0))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_construction_noise_test() {
+  let result = era.parse("Construction noise permitted 8am-6pm weekdays only")
+  result |> should.be_ok
+}
+
+pub fn parse_range_doctor_availability_test() {
+  let result = era.parse("Dr. Smith available Tuesday-Thursday 9am-3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_farmers_market_test() {
+  let result = era.parse("Farmers market Saturdays 7am-1pm April through October")
+  result |> should.be_ok
+}
+
+pub fn parse_range_ticket_sales_test() {
+  let result = era.parse("Tickets on sale starting Monday 10am through Friday 5pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_meter_enforcement_test() {
+  let result = era.parse("Meter enforcement 8am-6pm except Sundays and holidays")
+  result |> should.be_ok
+}
+
+pub fn parse_range_summer_camp_test() {
+  let result = era.parse("Camp runs June 15-August 15, drop-off 8-9am, pickup 3-4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_rehearsal_week_test() {
+  let result = era.parse("Rehearsals Monday-Friday 6-10pm next week")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(18))
+        tr.end.hour |> should.equal(Some(22))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_restaurant_hours_test() {
+  let result = era.parse("Open for dinner Tuesday-Sunday 5pm-10pm, closed Mondays")
+  result |> should.be_ok
+}
+
+pub fn parse_range_ski_season_test() {
+  let result = era.parse("Ski season December through March, lifts 9am-4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_yard_sale_test() {
+  let result = era.parse("Yard sale this Saturday 8am-2pm, rain date Sunday same time")
+  result |> should.be_ok
+}
+
+pub fn parse_range_bar_hours_test() {
+  let result = era.parse("Bar open 11am-2am daily except Sunday 12pm-midnight")
+  result |> should.be_ok
+}
+
+pub fn parse_range_meditation_session_test() {
+  let result = era.parse("Meditation 7-8am every morning this week")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(7))
+        tr.end.hour |> should.equal(Some(8))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_truck_delivery_test() {
+  let result = era.parse("Delivery window tomorrow 1-5pm, please be home")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(13))
+        tr.end.hour |> should.equal(Some(17))
+      }
+      SinglePoint(dt) -> dt.relative |> should.equal(Some(Tomorrow))
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_art_gallery_test() {
+  let result = era.parse("Gallery hours Wed-Sun 10am-6pm, closed Mon-Tue")
+  result |> should.be_ok
+}
+
+pub fn parse_range_power_outage_test() {
+  let result = era.parse("Scheduled outage Sunday 2am-6am for maintenance")
+  result |> should.be_ok
+}
+
+pub fn parse_range_food_truck_test() {
+  let result = era.parse("Taco truck here Tue-Fri 11:30am-1:30pm lunch rush")
+  result |> should.be_ok
+}
+
+pub fn parse_range_voting_hours_test() {
+  let result = era.parse("Polls open Tuesday 7am-8pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(7))
+        tr.end.hour |> should.equal(Some(20))
+      }
+      _ -> Nil
+    }
+  }
+}
+
+pub fn parse_range_snow_removal_test() {
+  let result = era.parse("Snow removal operations midnight-6am when needed")
+  result |> should.be_ok
+}
+
+pub fn parse_range_dog_park_test() {
+  let result = era.parse("Dog park dawn to dusk daily")
+  result |> should.be_ok
+}
+
+pub fn parse_range_recycling_pickup_test() {
+  let result = era.parse("Recycling pickup Tuesday mornings 6am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_range_coffee_shop_test() {
+  let result = era.parse("Coffee shop 6am-8pm Mon-Fri, 7am-9pm Sat-Sun")
+  result |> should.be_ok
+}
+
+pub fn parse_range_dental_office_test() {
+  let result = era.parse("Office hours M/W/F 8am-5pm, T/Th 10am-7pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_playground_test() {
+  let result = era.parse("Playground supervised 3-6pm weekdays during summer")
+  result |> should.be_ok
+}
+
+pub fn parse_range_pharmacy_drive_thru_test() {
+  let result = era.parse("Drive-thru 8am-9pm every day including holidays")
+  result |> should.be_ok
+}
+
+pub fn parse_range_pet_adoption_test() {
+  let result = era.parse("Adoption hours Sat-Sun 11am-4pm, appointments only weekdays")
+  result |> should.be_ok
+}
+
+pub fn parse_range_car_wash_test() {
+  let result = era.parse("Car wash 7am-7pm weather permitting")
+  result |> should.be_ok
+}
+
+pub fn parse_range_tennis_court_test() {
+  let result = era.parse("Court reservations available 6am-10pm, 2-hour max")
+  result |> should.be_ok
+}
+
+pub fn parse_range_bakery_special_test() {
+  let result = era.parse("Fresh donuts Friday-Sunday 5am-noon or until sold out")
+  result |> should.be_ok
+}
+
+pub fn parse_range_tutoring_center_test() {
+  let result = era.parse("Tutoring Mon-Thu 3-8pm, Sat 9am-2pm, closed Sun")
+  result |> should.be_ok
+}
+
+pub fn parse_range_museum_special_test() {
+  let result = era.parse("Special exhibit March 1-May 31, extended hours Fridays 10am-9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_food_bank_test() {
+  let result = era.parse("Food bank distributions Wed 2-4pm and Sat 9am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_range_ice_rink_test() {
+  let result = era.parse("Public skating Sat-Sun 1-3pm and 7-9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_range_garage_sale_test() {
+  let result = era.parse("Multi-family garage sale all weekend 8am-4pm both days")
+  result |> should.be_ok
+}
+
+// ============================================================================
+// RECURRENCE PATTERNS - 50 tests
+// ============================================================================
+
+pub fn parse_recur_team_standup_test() {
+  let result = era.parse("Team standup every weekday at 9:15am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(9))
+        re.time.minute |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_yoga_class_test() {
+  let result = era.parse("Yoga class every Monday, Wednesday, and Friday at 6pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(18))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_trash_day_test() {
+  let result = era.parse("Trash pickup every Tuesday and Friday morning")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> Nil
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_piano_lessons_test() {
+  let result = era.parse("Piano lessons every Thursday at 4:30pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(16))
+        re.time.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_church_service_test() {
+  let result = era.parse("Sunday service every week at 10:30am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(10))
+        re.time.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_newsletter_test() {
+  let result = era.parse("Newsletter goes out every Monday at noon")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(12))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_movie_night_test() {
+  let result = era.parse("Movie night every Friday at 8pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(20))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_payroll_test() {
+  let result = era.parse("Payroll processed every other Friday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(_) -> Nil
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_lawn_service_test() {
+  let result = era.parse("Lawn service every Wednesday morning during summer")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_board_meeting_test() {
+  let result = era.parse("Board meeting first Tuesday of every month at 7pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_book_club_test() {
+  let result = era.parse("Book club meets last Thursday each month at 6:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_cleaning_crew_test() {
+  let result = era.parse("Cleaning crew comes Monday, Wednesday, Friday at 6pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(18))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_swim_practice_test() {
+  let result = era.parse("Swim practice every weekday 5-7am")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_grocery_delivery_test() {
+  let result = era.parse("Groceries delivered every Saturday between 10am-12pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_medication_daily_test() {
+  let result = era.parse("Take medication daily at 8am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(8))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_dog_grooming_test() {
+  let result = era.parse("Dog grooming every 6 weeks on Saturdays")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_therapy_session_test() {
+  let result = era.parse("Therapy every Tuesday at 2pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(14))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_rehearsal_weekly_test() {
+  let result = era.parse("Rehearsal every Wednesday evening at 7pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(19))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_podcast_release_test() {
+  let result = era.parse("New episodes drop every Monday at 6am")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_farmers_market_weekly_test() {
+  let result = era.parse("Farmers market every Sunday 8am-1pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_oil_change_test() {
+  let result = era.parse("Oil change every 3 months")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_quiz_night_test() {
+  let result = era.parse("Trivia night every Thursday at 8pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(20))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_blood_donation_test() {
+  let result = era.parse("Blood drive every 8 weeks on Wednesdays")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_karate_class_test() {
+  let result = era.parse("Karate classes every Tuesday and Thursday at 5:30pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(17))
+        re.time.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_brunch_tradition_test() {
+  let result = era.parse("Family brunch every Sunday at 11am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(11))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_spin_class_test() {
+  let result = era.parse("Spin class Mon/Wed/Fri at 6:15am")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_sales_call_test() {
+  let result = era.parse("Sales call every Friday at 3pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_garbage_collection_test() {
+  let result = era.parse("Garbage collection every Monday and Thursday before 7am")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_ballet_class_test() {
+  let result = era.parse("Ballet every Saturday morning at 9am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(9))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_study_group_test() {
+  let result = era.parse("Study group meets every Tuesday and Thursday at 7pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(19))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_sermon_podcast_test() {
+  let result = era.parse("Sermons posted online every Sunday at 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_wine_tasting_test() {
+  let result = era.parse("Wine tasting every first Friday at 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_coding_bootcamp_test() {
+  let result = era.parse("Bootcamp Mon-Fri 9am-5pm for 12 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_open_mic_test() {
+  let result = era.parse("Open mic night every Wednesday at 8pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(20))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_parking_sweep_test() {
+  let result = era.parse("Street cleaning second and fourth Tuesday 8am-10am")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_webinar_series_test() {
+  let result = era.parse("Webinar series every Thursday at 1pm for 8 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_meal_prep_test() {
+  let result = era.parse("Meal prep every Sunday afternoon")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_guitar_lesson_test() {
+  let result = era.parse("Guitar lessons every Saturday at 10am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(10))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_meditation_morning_test() {
+  let result = era.parse("Morning meditation daily at 6am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(6))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_running_group_test() {
+  let result = era.parse("Running group meets every Saturday 7am rain or shine")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_prayer_meeting_test() {
+  let result = era.parse("Prayer meeting every Wednesday evening at 6:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_chess_club_test() {
+  let result = era.parse("Chess club every Monday and Thursday 4-6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_alumni_call_test() {
+  let result = era.parse("Alumni networking call last Wednesday of each month at 8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_improv_class_test() {
+  let result = era.parse("Improv class every Tuesday at 7:30pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(19))
+        re.time.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_volunteer_shift_test() {
+  let result = era.parse("Volunteer shift every other Saturday 9am-1pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_spanish_class_test() {
+  let result = era.parse("Spanish class Mon/Wed/Fri at 7pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(19))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_recur_scrum_retrospective_test() {
+  let result = era.parse("Retrospective every other Friday at 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_recur_dog_training_test() {
+  let result = era.parse("Puppy training every Saturday morning at 9:30am for 6 weeks")
+  result |> should.be_ok
+}
+
+// ============================================================================
+// MIXED SCENARIOS - 100 tests combining multiple patterns
+// ============================================================================
+
+pub fn parse_mixed_recurring_with_range_test() {
+  let result = era.parse("Office hours every Tuesday 2-5pm and Thursday 9am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_multiple_times_recurring_test() {
+  let result = era.parse("Standup daily at 9am, retrospective every Friday at 3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_range_and_specific_test() {
+  let result = era.parse("Available 10am-4pm tomorrow, but meeting at 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_recurring_multiple_days_test() {
+  let result = era.parse("Gym Mon/Wed/Fri 6-7:30am, Sat 8-10am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_deadline_series_test() {
+  let result = era.parse("Draft due Monday 5pm, revisions Wednesday noon, final Friday 3pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_recurring_with_exception_test() {
+  let result = era.parse("Team lunch every Thursday at noon except next Thursday")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_multi_day_hours_test() {
+  let result = era.parse("Open Mon-Fri 9am-8pm, Sat-Sun 10am-6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_appointment_series_test() {
+  let result = era.parse("Physical therapy every Tuesday and Thursday 3pm for 6 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_shift_rotation_test() {
+  let result = era.parse("Week 1: Mon-Wed 8am-4pm, Week 2: Thu-Sat 4pm-midnight")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_class_schedule_full_test() {
+  let result = era.parse("Intro Mon/Wed 9-10:30am, Advanced Tue/Thu 2-4pm, all month")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_event_multi_day_test() {
+  let result = era.parse("Conference July 15-17, keynote Mon 9am, workshops Tue-Wed 10am-4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_medication_complex_test() {
+  let result = era.parse("Pill A daily 8am, Pill B every 12 hours, Pill C Mon/Wed/Fri 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_restaurant_hours_test() {
+  let result = era.parse("Lunch daily 11:30am-3pm, dinner Tue-Sun 5-10pm, brunch Sat-Sun 9am-2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_training_program_test() {
+  let result = era.parse("Orientation tomorrow 9am-5pm, then weekly check-ins every Friday 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_court_schedule_test() {
+  let result = era.parse("Tennis court A 6-8am, court B 8-10am, available weekdays")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_childcare_schedule_test() {
+  let result = era.parse("Daycare Mon-Fri 7am-6pm, extended hours Thu until 8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_concert_series_test() {
+  let result = era.parse("Summer concerts every Saturday 7pm June through August")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_cleaning_rotation_test() {
+  let result = era.parse("Deep clean first Monday of month 8am-4pm, maintenance every Wed 10am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_doctor_rounds_test() {
+  let result = era.parse("Dr. Lee Mon/Tue/Thu 9am-3pm, Dr. Park Wed/Fri 1-6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_pool_schedule_complex_test() {
+  let result = era.parse("Lap swim 6-8am daily, lessons Mon/Wed 4-5pm, free swim weekends 10am-6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_library_story_time_test() {
+  let result = era.parse("Story time every Tuesday and Thursday 10:30am during school year")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_parking_complex_test() {
+  let result = era.parse("Parking free after 6pm weekdays, all day weekends, $5/hour 8am-6pm Mon-Fri")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_delivery_schedule_test() {
+  let result = era.parse("Same-day if ordered by noon, next day if by 5pm, weekend orders ship Monday")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_salon_availability_test() {
+  let result = era.parse("Walk-ins Tue-Thu 10am-2pm, appointments Mon-Sat 9am-7pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_workshop_series_test() {
+  let result = era.parse("Intro workshop tomorrow 6-8pm, advanced every Thursday 7pm for 4 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_food_service_test() {
+  let result = era.parse("Breakfast 6-11am daily, lunch 11am-3pm, dinner 5-9pm, late night Fri-Sat until midnight")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_fitness_bootcamp_test() {
+  let result = era.parse("Bootcamp Mon/Wed/Fri 5:30-6:30am plus Saturday 8-9:30am for 8 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_museum_hours_special_test() {
+  let result = era.parse("Regular hours Tue-Sun 10am-5pm, late night first Friday 10am-9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_pharmacy_schedule_test() {
+  let result = era.parse("Pharmacy Mon-Fri 8am-9pm, Sat 9am-6pm, Sun 10am-4pm, 24hr drive-thru")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_tutoring_complex_test() {
+  let result = era.parse("Math tutoring every Mon/Wed 4-6pm, test prep Saturdays 9am-noon starting next week")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_volunteer_shifts_test() {
+  let result = era.parse("Morning shift 8am-noon weekdays, evening 6-9pm Tue/Thu, weekend 10am-4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_rehearsal_performance_test() {
+  let result = era.parse("Rehearsals Mon-Thu 7-10pm this month, performances Dec 15-17 at 8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_garbage_recycling_test() {
+  let result = era.parse("Trash every Monday and Thursday 7am, recycling every other Wednesday, bulk pickup first Sat")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_animal_shelter_test() {
+  let result = era.parse("Cat room daily 10am-6pm, dog walks every 3 hours 8am-8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_ski_lift_hours_test() {
+  let result = era.parse("Lifts 9am-4pm daily Dec-Mar, night skiing Fri-Sat until 9pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_voting_location_test() {
+  let result = era.parse("Early voting Oct 20-Nov 1 weekdays 8am-5pm, Sat 10am-4pm, election day 6am-8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_farmers_market_vendors_test() {
+  let result = era.parse("Regular market every Sunday 8am-1pm, Wednesday evening market 4-8pm May-Sept")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_bus_schedule_test() {
+  let result = era.parse("Bus every 15 mins rush hour 6-9am and 4-7pm, every 30 mins other times")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_bakery_specials_test() {
+  let result = era.parse("Croissants daily at 7am, sourdough Wed/Sat 6am, cinnamon rolls Sunday 8am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_yoga_schedule_test() {
+  let result = era.parse("Gentle yoga Mon/Wed/Fri 9am, power yoga Tue/Thu 6pm, restorative Sunday 4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_laundromat_hours_test() {
+  let result = era.parse("Self-service 6am-10pm daily, wash-and-fold Mon-Fri 8am-6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_community_center_test() {
+  let result = era.parse("Gym access 24/7 members, classes Mon-Sat 6am-9pm, pool summer only 10am-8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_food_truck_rotation_test() {
+  let result = era.parse("Tacos Monday noon-2pm, BBQ Wednesday 11:30am-1:30pm, pizza Friday 11am-2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_church_activities_test() {
+  let result = era.parse("Service Sun 10am, Bible study Wed 7pm, youth group Fri 6:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_blood_drive_schedule_test() {
+  let result = era.parse("Blood drive third Thursday each month 2-7pm, next one tomorrow 3-8pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_auto_shop_hours_test() {
+  let result = era.parse("Service Mon-Fri 7am-6pm, Sat 8am-4pm, oil changes walk-in Sat 8am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_band_practice_gigs_test() {
+  let result = era.parse("Practice every Tuesday 7-9pm, gig this Saturday 9pm, recording session next Wed 2-6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_pet_care_schedule_test() {
+  let result = era.parse("Dog walker Mon/Wed/Fri 11am, vet checkup next Thursday 3pm, grooming every 6 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_conference_room_booking_test() {
+  let result = era.parse("Room A booked 9am-noon today, available 2-5pm, reserved every Mon 10am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_coffee_shop_features_test() {
+  let result = era.parse("Open daily 6am-8pm, live music Fri-Sat 7-9pm, book club last Tuesday 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_swim_team_practice_test() {
+  let result = era.parse("Team practice Mon-Fri 5-7am and 4-6pm, meets every other Saturday 8am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_art_class_schedule_test() {
+  let result = era.parse("Drawing Mon 6-8pm, painting Wed 7-9pm, sculpture Sat 10am-1pm, all 8-week sessions")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_dialysis_schedule_test() {
+  let result = era.parse("Treatment Mon/Wed/Fri 7am-11am, labs first Monday each month at 6am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_theater_showtimes_test() {
+  let result = era.parse("Matinee Sat-Sun 2pm, evening shows Fri-Sat 7pm and 9:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_home_health_visits_test() {
+  let result = era.parse("Nurse visits Tue/Thu 10am, PT Mon/Wed/Fri 2pm, aide daily 8am and 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_golf_course_times_test() {
+  let result = era.parse("Tee times every 10 mins 6am-6pm, twilight rate after 4pm, closed Mon for maintenance")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_bar_karaoke_night_test() {
+  let result = era.parse("Happy hour Mon-Fri 4-7pm, karaoke every Thursday 8pm-midnight, trivia Tuesdays 7pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_urgent_care_hours_test() {
+  let result = era.parse("Walk-ins daily 8am-8pm, X-ray until 7pm, lab work Mon-Fri 7am-5pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_tennis_lessons_league_test() {
+  let result = era.parse("Lessons Tue/Thu 5-6pm, league play every Saturday 9am, open court after 6pm weekdays")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_drum_circle_workshop_test() {
+  let result = era.parse("Drum circle first and third Friday 7pm, workshop series every Wed 6-8pm for 4 weeks")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_synagogue_services_test() {
+  let result = era.parse("Shabbat services Fri 6:30pm and Sat 9am, Hebrew school Sun 9am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_senior_center_activities_test() {
+  let result = era.parse("Bingo Wed 2pm, exercise class Mon/Wed/Fri 10am, lunch daily 11:30am-12:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_climbing_gym_test() {
+  let result = era.parse("Open climb daily 6am-11pm, classes Tue/Thu 7pm, youth program Sat 9am-noon")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_post_office_hours_test() {
+  let result = era.parse("Lobby Mon-Fri 8am-5pm, Sat 9am-noon, self-service kiosk 24/7")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_escape_room_bookings_test() {
+  let result = era.parse("Bookings on the hour 11am-9pm weekdays, 10am-11pm weekends, group rate after 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_ice_cream_shop_test() {
+  let result = era.parse("Open daily noon-10pm summer, 2-8pm winter, closed Jan-Feb")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_dog_daycare_hours_test() {
+  let result = era.parse("Drop-off 6:30-9am, pickup 4-6:30pm weekdays, Sat 8am-4pm, spa services by appointment")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_martial_arts_schedule_test() {
+  let result = era.parse("Kids class Mon/Wed 5pm, adults Tue/Thu 7pm, sparring Sat 10am, belt testing quarterly")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_writing_group_test() {
+  let result = era.parse("Critique group every other Wednesday 6:30pm, write-in Saturdays 10am-2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_co_working_space_test() {
+  let result = era.parse("24/7 access members, day pass 8am-6pm, meeting rooms by hour 9am-5pm weekdays")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_brewery_taproom_test() {
+  let result = era.parse("Taproom Wed-Thu 4-10pm, Fri-Sat noon-midnight, Sun noon-8pm, tours Sat 2pm and 4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_pottery_studio_test() {
+  let result = era.parse("Open studio Mon-Thu 10am-8pm, classes Tue/Thu 6-8pm, firing every other weekend")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_language_exchange_test() {
+  let result = era.parse("Spanish Mon 6pm, French Wed 7pm, Mandarin Sat 10am, conversation practice daily noon-1pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_bike_shop_service_test() {
+  let result = era.parse("Sales daily 10am-7pm, service Mon-Sat 9am-6pm, group rides Sun 8am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_garden_plot_access_test() {
+  let result = era.parse("Community garden dawn-dusk daily, workshops second Saturday 9am, workdays every Thu 5pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_soup_kitchen_schedule_test() {
+  let result = era.parse("Lunch served Mon-Sat 11:30am-1pm, dinner Tue/Thu/Sun 5-6:30pm, food bank Fri 2-4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_skating_rink_sessions_test() {
+  let result = era.parse("Public skate Sat 1-3pm and 7-9pm, lessons Sun 9am-noon, hockey league Wed/Fri nights")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_choir_rehearsal_test() {
+  let result = era.parse("Full choir Thu 7:30-9pm, sectionals Tue varies by section, performance this Sunday 4pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_planetarium_shows_test() {
+  let result = era.parse("Shows on the hour 10am-4pm daily, laser show Fri-Sat 8pm and 9:30pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_tool_library_hours_test() {
+  let result = era.parse("Checkout Wed 5-8pm and Sat 10am-2pm, returns any time in drop box")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_sewing_circle_test() {
+  let result = era.parse("Quilting bee every Monday 1-4pm, open sew Fri 6-9pm, classes Sat morning by registration")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_chess_club_tournament_test() {
+  let result = era.parse("Club nights Tue/Thu 6pm, casual play Wed 7pm, tournament first Sunday quarterly 10am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_animal_rescue_adoption_test() {
+  let result = era.parse("Adoptions Sat-Sun 11am-5pm, fostering orientation first Wed 6pm, donation drop-off daily")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_maker_space_access_test() {
+  let result = era.parse("3D printers Mon-Fri 9am-9pm, wood shop Tue/Thu/Sat, laser cutter by appointment")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_comedy_club_lineup_test() {
+  let result = era.parse("Open mic Monday 8pm, showcase Thu 7pm and 9pm, headliner Fri-Sat 7pm/9pm/11pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_meditation_center_schedule_test() {
+  let result = era.parse("Morning sit daily 6-7am, evening 6-7pm, dharma talk Sunday 10am, retreat quarterly")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_hookah_lounge_hours_test() {
+  let result = era.parse("Open Wed-Sun 8pm-2am, DJ Fri-Sat 10pm-close, hookah menu until 1am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_archery_range_times_test() {
+  let result = era.parse("Range open Sat-Sun 9am-5pm, league Wed 6-9pm, beginners class first Sat 10am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_axe_throwing_venue_test() {
+  let result = era.parse("Walk-ins Thu 5-10pm, reservations Fri-Sat every hour 6-11pm, leagues Mon/Wed 7pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_book_swap_library_test() {
+  let result = era.parse("Book swap open daily 9am-7pm, themed exchanges last Friday 6pm, kids hour Sat 10am")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_virtual_reality_arcade_test() {
+  let result = era.parse("Sessions every 30 mins noon-10pm weekdays, 10am-midnight weekends, tournaments monthly")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_sailing_club_activities_test() {
+  let result = era.parse("Racing Sat 10am Apr-Oct, lessons Sun 9am and 2pm, social sail Wed 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_astronomy_club_test() {
+  let result = era.parse("Star party every new moon weather permitting, meetings third Thursday 7pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_food_coop_hours_test() {
+  let result = era.parse("Shopping daily 8am-9pm, volunteer shifts Tue/Thu 6am-noon, member meeting quarterly Sun 2pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_roller_derby_practice_test() {
+  let result = era.parse("Fresh meat Mon/Wed 7pm, scrimmage Thu 8pm, bout home games monthly Sat 6pm")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_boardgame_cafe_test() {
+  let result = era.parse("Open daily noon-11pm, game night Wed 6pm free entry, tournament Sun 1pm $5")
+  result |> should.be_ok
+}
+
+pub fn parse_mixed_rowing_club_schedule_test() {
+  let result = era.parse("Morning rows Mon-Fri 5:30am, novice class Sat 7am, regatta racing season May-Sept weekends")
+  result |> should.be_ok
+}
+
+// ============================================================================
 // EXPECTED FAILURES - Cases we can't/shouldn't handle
 // ============================================================================
 
