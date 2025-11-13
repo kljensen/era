@@ -2364,161 +2364,473 @@ pub fn parse_extracted_precise_time_test() {
 // Email scenarios
 pub fn parse_wild_email_meeting_request_test() {
   let result = era.parse("Hi John, can we schedule a call for next Wednesday at 2pm? Thanks!")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Wednesday)))
+        dt.hour |> should.equal(Some(14))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_email_availability_test() {
   let result = era.parse("I'm free tomorrow afternoon if you want to chat")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(15))  // afternoon = 3pm
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_email_deadline_test() {
   let result = era.parse("The report is due in 3 days, please have it ready by then.")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysFromNow(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_email_followup_test() {
   let result = era.parse("Following up on our conversation from 2 days ago...")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysAgo(2)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Slack/Chat scenarios
 pub fn parse_wild_slack_standup_test() {
   let result = era.parse("@channel standup in 10 minutes!")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(10)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_slack_meeting_test() {
   let result = era.parse("Quick sync at 3:30pm in room 204?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(15))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_slack_eta_test() {
   let result = era.parse("Sorry running late, will be there in 5 minutes")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(5)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_slack_lunch_test() {
   let result = era.parse("Anyone want to grab lunch at noon?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(12))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Calendar invites
 pub fn parse_wild_calendar_weekly_test() {
   let result = era.parse("Weekly team standup - every Monday at 9am")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(9))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
 }
 
 pub fn parse_wild_calendar_biweekly_test() {
   let result = era.parse("1-on-1 meeting every other Tuesday at 2pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(14))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
 }
 
 pub fn parse_wild_calendar_workshop_test() {
   let result = era.parse("Design workshop next Friday from 10am to 4pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        // Should parse "next Friday"
+        dt.relative |> should.equal(Some(NextWeekday(Friday)))
+      }
+      Range(tr) -> {
+        // Or parse "10am to 4pm" range
+        tr.start.hour |> should.equal(Some(10))
+        tr.end.hour |> should.equal(Some(16))
+      }
+      _ -> Nil  // Accept either interpretation
+    }
+  }
 }
 
 // SMS/Text messages
 pub fn parse_wild_sms_dinner_test() {
   let result = era.parse("Want to get dinner tonight at 7pm?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(19))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_sms_movie_test() {
   let result = era.parse("Movie starts at 8:15pm, meet outside at 8pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        // Should parse either 8:15pm or 8pm
+        case dt.hour {
+          Some(20) -> Nil  // Could be 8pm or 8:15pm
+          _ -> panic as "Expected hour 20"
+        }
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_sms_pickup_test() {
   let result = era.parse("Can you pick me up tomorrow morning at 6:30am?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(6))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Social media posts
 pub fn parse_wild_twitter_event_test() {
   let result = era.parse("Join us for the webinar on Thursday at 2pm EST!")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Thursday)))
+        dt.hour |> should.equal(Some(14))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_facebook_party_test() {
   let result = era.parse("Birthday party this Saturday at 7pm! Everyone's invited")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(19))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Task management
 pub fn parse_wild_todo_urgent_test() {
   let result = era.parse("URGENT: Fix production bug by tonight")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Today))
+        dt.hour |> should.equal(Some(22))  // tonight
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_todo_deadline_test() {
   let result = era.parse("Submit proposal by Friday 5pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Friday)))
+        dt.hour |> should.equal(Some(17))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_todo_reminder_test() {
   let result = era.parse("Remember to call dentist tomorrow")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Doctor/Medical
 pub fn parse_wild_doctor_appointment_test() {
   let result = era.parse("Your appointment is scheduled for next Tuesday at 10:30am")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Tuesday)))
+        dt.hour |> should.equal(Some(10))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_prescription_test() {
   let result = era.parse("Take medication daily at 8am and 8pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        // Should parse "daily"
+        Nil
+      }
+      SinglePoint(dt) -> {
+        // Or just parse "8am"
+        dt.hour |> should.equal(Some(8))
+      }
+      MultiplePoints(_) -> {
+        // Or parse "8am and 8pm" as multiple points
+        Nil
+      }
+      _ -> Nil
+    }
+  }
 }
 
 // Travel/Transportation
 pub fn parse_wild_flight_test() {
   let result = era.parse("Flight departs tomorrow at 6:45am from gate B12")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(6))
+        dt.minute |> should.equal(Some(45))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_train_test() {
   let result = era.parse("Next train to Boston leaves in 20 minutes")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(20)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_uber_test() {
   let result = era.parse("Your ride will arrive in 3 minutes")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Work/Professional
 pub fn parse_wild_interview_test() {
   let result = era.parse("Interview scheduled for Monday, March 15 at 2pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(3))
+        dt.day |> should.equal(Some(15))
+        dt.hour |> should.equal(Some(14))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_presentation_test() {
   let result = era.parse("You're presenting on Wednesday from 3-4pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Wednesday)))
+      }
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(15))
+        tr.end.hour |> should.equal(Some(16))
+      }
+      _ -> Nil
+    }
+  }
 }
 
 pub fn parse_wild_code_review_test() {
   let result = era.parse("Code review meeting every Thursday at 11am")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        re.time.hour |> should.equal(Some(11))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
 }
 
 // Personal/Social
 pub fn parse_wild_gym_schedule_test() {
   let result = era.parse("Gym class Mon/Wed/Fri at 6am")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      MultiplePoints(_) -> Nil  // Mon/Wed/Fri parsed as multiple points
+      SinglePoint(dt) -> {
+        // Or just parses first weekday
+        dt.hour |> should.equal(Some(6))
+      }
+      _ -> Nil
+    }
+  }
 }
 
 pub fn parse_wild_coffee_test() {
   let result = era.parse("Coffee tomorrow at 10am at the usual spot?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(10))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_lunch_date_test() {
   let result = era.parse("Let's do lunch next week, how about Tuesday at 12:30pm?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Tuesday)))
+        dt.hour |> should.equal(Some(12))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // UK/GB date format tests
@@ -2556,72 +2868,204 @@ pub fn parse_wild_uk_date_ambiguous_test() {
 // Emoji tests (emojis as unknown tokens should be skipped)
 pub fn parse_wild_emoji_calendar_test() {
   let result = era.parse("📅 Meeting tomorrow at 3pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_emoji_clock_test() {
   let result = era.parse("⏰ Reminder: standup in 5 minutes")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(5)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_emoji_party_test() {
   let result = era.parse("🎉 Party this Friday at 8pm!")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(20))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Complex punctuation
 pub fn parse_wild_parentheses_test() {
   let result = era.parse("Meeting (rescheduled) now at 4pm instead of 3pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        // Should parse "4pm" or "3pm"
+        case dt.hour {
+          Some(15) -> Nil  // 3pm
+          Some(16) -> Nil  // 4pm
+          _ -> panic as "Expected hour 15 or 16"
+        }
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_quotes_test() {
   let result = era.parse("She said \"meet me at 5pm\" so I'll be there")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(17))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_brackets_test() {
   let result = era.parse("[URGENT] Deploy by tomorrow at midnight")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(0))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Casual/Informal
 pub fn parse_wild_casual_tonight_test() {
   let result = era.parse("wanna hang tonight at like 9pm or something?")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(21))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_casual_weekend_test() {
   let result = era.parse("lets do smth this saturday afternoon")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        // Could parse "saturday" or "afternoon"
+        Nil
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Multiple dates in same text (should parse first one)
 pub fn parse_wild_multiple_dates_test() {
   let result = era.parse("Meeting moved from Monday to Wednesday at 2pm")
-  result |> should.be_ok  // Should find "Monday" or "Wednesday at 2pm"
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        // Should find either Monday or Wednesday at 2pm
+        Nil
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Edge cases with numbers
 pub fn parse_wild_age_and_time_test() {
   let result = era.parse("My son is 5 years old, party at 3pm tomorrow")
-  result |> should.be_ok  // Should find "3pm tomorrow", not "5 years"
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        // Should find "3pm tomorrow", NOT "5 years"
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_address_and_time_test() {
   let result = era.parse("Meet at 123 Main St tomorrow at 10am")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(10))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // Common abbreviations
 pub fn parse_wild_abbrev_dept_test() {
   let result = era.parse("Dept. meeting next Mon at 9am")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Monday)))
+        dt.hour |> should.equal(Some(9))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 pub fn parse_wild_abbrev_appt_test() {
   let result = era.parse("Appt scheduled for Tue at 2:30pm")
-  result |> should.be_ok
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Tuesday)))
+        dt.hour |> should.equal(Some(14))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
 }
 
 // ============================================================================
