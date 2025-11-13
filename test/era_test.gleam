@@ -2006,3 +2006,388 @@ pub fn parse_sept_test() {
     }
   }
 }
+
+// ============================================================================
+// REALISTIC EMAIL/CHAT DIALOG TEST CASES
+// ============================================================================
+// These test cases demonstrate the library's limitations with embedded dates
+// in prose. The current parser expects clean date expressions, not extraction
+// from natural text. In a real application, you'd extract the date portion first.
+
+// EXPECTED FAILURE: Parser doesn't handle text embedding
+pub fn parse_email_embedded_date_expected_fail_test() {
+  let result = era.parse("Hey can we meet tomorrow at 3pm to discuss the proposal?")
+  // EXPECTED FAILURE: Contains words "Hey", "can", "we", "meet", "to", "discuss", etc.
+  // Parser expects clean expressions like "tomorrow at 3pm", not embedded in prose
+  result |> should.be_error
+}
+
+pub fn parse_email_embedded_time_range_expected_fail_test() {
+  let result = era.parse("I'm available 2-4pm if that works for you")
+  // EXPECTED FAILURE: Extra words before and after the time range
+  result |> should.be_error
+}
+
+pub fn parse_slack_reminder_expected_fail_test() {
+  let result = era.parse("Reminder: standup in 15 minutes!")
+  // EXPECTED FAILURE: Contains "Reminder:", "standup", and "!"
+  result |> should.be_error
+}
+
+pub fn parse_calendar_invite_expected_fail_test() {
+  let result = era.parse("Team sync every Tuesday and Thursday at 10am starting next week")
+  // EXPECTED FAILURE: Contains "Team", "sync", "starting", "week"
+  result |> should.be_error
+}
+
+// BUT - these CLEAN expressions work (what you'd extract):
+
+// Email scenario 1: "Hey can we meet TOMORROW AT 3PM to discuss?"
+pub fn parse_extracted_tomorrow_3pm_test() {
+  let result = era.parse("tomorrow at 3pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Email scenario 2: "I'm available 2-4PM if that works"
+pub fn parse_extracted_2_4pm_range_test() {
+  let result = era.parse("2-4pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(14))
+        tr.end.hour |> should.equal(Some(16))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+// Slack scenario: "standup IN 15 MINUTES"
+pub fn parse_extracted_in_15_min_test() {
+  let result = era.parse("in 15 minutes")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(15)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Calendar invite: "EVERY TUESDAY AND THURSDAY AT 10AM"
+pub fn parse_extracted_recurring_tue_thu_test() {
+  let result = era.parse("every Tuesday and Thursday at 10am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          EveryWeekday(days) -> days |> should.equal([Tuesday, Thursday])
+          _ -> panic as "Expected EveryWeekday"
+        }
+        re.time.hour |> should.equal(Some(10))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+// Email: "Let's schedule for NEXT MONDAY AT 2:30PM"
+pub fn parse_extracted_next_monday_230pm_test() {
+  let result = era.parse("next Monday at 2:30pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Monday)))
+        dt.hour |> should.equal(Some(14))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Chat: "I'll call you back IN 2 HOURS"
+pub fn parse_extracted_in_2_hours_test() {
+  let result = era.parse("in 2 hours")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursFromNow(2)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Office hours sign: "Available 9AM TO 5PM"
+pub fn parse_extracted_office_hours_test() {
+  let result = era.parse("9am to 5pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(9))
+        tr.end.hour |> should.equal(Some(17))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+// Email: "Conference is NOVEMBER 15, 2024"
+pub fn parse_extracted_nov_15_2024_test() {
+  let result = era.parse("November 15, 2024")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.year |> should.equal(Some(2024))
+        dt.month |> should.equal(Some(11))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Gym schedule: "I go MONDAY AND WEDNESDAY AND FRIDAY"
+pub fn parse_extracted_mon_wed_fri_test() {
+  let result = era.parse("Monday and Wednesday and Friday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      MultiplePoints(dates) -> {
+        // Verify we get 3 dates
+        case dates {
+          [d1, d2, d3] -> {
+            d1.relative |> should.equal(Some(NextWeekday(Monday)))
+            d2.relative |> should.equal(Some(NextWeekday(Wednesday)))
+            d3.relative |> should.equal(Some(NextWeekday(Friday)))
+          }
+          _ -> panic as "Expected exactly 3 dates"
+        }
+      }
+      _ -> panic as "Expected MultiplePoints"
+    }
+  }
+}
+
+// Email: "Deadline was 3 DAYS AGO"
+pub fn parse_extracted_3_days_ago_deadline_test() {
+  let result = era.parse("3 days ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysAgo(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Appointment reminder: "Your appointment is TOMORROW AT NOON"
+pub fn parse_extracted_tomorrow_noon_test() {
+  let result = era.parse("tomorrow at noon")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Tomorrow))
+        dt.hour |> should.equal(Some(12))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Weekly meeting: "Team standup EVERY MONDAY AT 9AM"
+pub fn parse_extracted_weekly_standup_test() {
+  let result = era.parse("every Monday at 9am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          EveryWeekday(days) -> days |> should.equal([Monday])
+          _ -> panic as "Expected EveryWeekday"
+        }
+        re.time.hour |> should.equal(Some(9))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+// Text message: "Running late, be there IN 5 MINUTES"
+pub fn parse_extracted_in_5_min_eta_test() {
+  let result = era.parse("in 5 minutes")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(5)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Project deadline: "Due IN 2 WEEKS"
+pub fn parse_extracted_in_2_weeks_deadline_test() {
+  let result = era.parse("in 2 weeks")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(WeeksFromNow(2)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Birthday reminder: "Sarah's birthday is JULY 15"
+pub fn parse_extracted_july_15_birthday_test() {
+  let result = era.parse("July 15")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(7))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Precise meeting time: "Zoom call at 14:30:00"
+pub fn parse_extracted_precise_time_test() {
+  let result = era.parse("14:30:00")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(14))
+        dt.minute |> should.equal(Some(30))
+        dt.second |> should.equal(Some(0))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// EXPECTED FAILURES - Cases we can't/shouldn't handle
+// ============================================================================
+
+// Can't handle: ordinals like "1st", "2nd", "3rd" - need additional parsing
+pub fn parse_ordinal_1st_expected_fail_test() {
+  let result = era.parse("1st")
+  // EXPECTED FAILURE: We don't parse ordinals yet (1st, 2nd, 3rd)
+  // This would require additional lexer tokens and parsing logic
+  result |> should.be_error
+}
+
+// Can't handle: "the" articles - not in our lexer
+pub fn parse_the_15th_expected_fail_test() {
+  let result = era.parse("the 15th")
+  // EXPECTED FAILURE: We don't handle "the" article or ordinals
+  result |> should.be_error
+}
+
+// Can't handle: complex relative phrases like "day after tomorrow"
+pub fn parse_day_after_tomorrow_expected_fail_test() {
+  let result = era.parse("day after tomorrow")
+  // EXPECTED FAILURE: Complex relative phrases beyond simple offsets
+  // Would need special parsing logic for "after" constructions
+  result |> should.be_error
+}
+
+// Can't handle: "ago" vs "before" synonyms
+pub fn parse_2_days_before_expected_fail_test() {
+  let result = era.parse("2 days before")
+  // EXPECTED FAILURE: "before" is a synonym for "ago" but not in our lexer
+  // Could be added if needed
+  result |> should.be_error
+}
+
+// Can't handle: written-out numbers like "five days ago"
+pub fn parse_five_days_ago_expected_fail_test() {
+  let result = era.parse("five days ago")
+  // EXPECTED FAILURE: We only parse numeric digits, not written numbers
+  // Would require a large addition to the lexer (one, two, three, etc.)
+  result |> should.be_error
+}
+
+// Can't handle: date ranges like "March 1-5"
+pub fn parse_date_range_march_1_to_5_expected_fail_test() {
+  let result = era.parse("March 1-5")
+  // EXPECTED FAILURE: Date ranges (multi-day periods) not yet implemented
+  // This is different from time ranges (same-day periods)
+  result |> should.be_error
+}
+
+// Can't handle: "between X and Y" syntax
+pub fn parse_between_2_and_4pm_expected_fail_test() {
+  let result = era.parse("between 2 and 4pm")
+  // EXPECTED FAILURE: "between" keyword not in our lexer
+  // Could be added as synonym for time ranges
+  result |> should.be_error
+}
+
+// Can't handle: timezone abbreviations
+pub fn parse_3pm_pst_expected_fail_test() {
+  let result = era.parse("3pm PST")
+  // EXPECTED FAILURE: Timezone support not implemented
+  // Would require significant additions for timezone handling
+  result |> should.be_error
+}
+
+// Can't handle: relative weekday with specific time like "this coming Friday"
+pub fn parse_this_coming_friday_expected_fail_test() {
+  let result = era.parse("this coming Friday")
+  // EXPECTED FAILURE: "coming" modifier not in lexer
+  // "this" is used for time of day, not weekdays
+  result |> should.be_error
+}
+
+// Can't handle: seasons
+pub fn parse_next_summer_expected_fail_test() {
+  let result = era.parse("next summer")
+  // EXPECTED FAILURE: Seasons (spring, summer, fall, winter) not implemented
+  // Would need season definitions and date ranges
+  result |> should.be_error
+}
