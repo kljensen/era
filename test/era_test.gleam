@@ -1099,3 +1099,910 @@ pub fn parse_in_1_month_test() {
     }
   }
 }
+
+// ============================================================================
+// ADDITIONAL TESTS FROM CHRONIC (Ruby)
+// ============================================================================
+
+pub fn parse_3_years_ago_test() {
+  let result = era.parse("3 years ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.YearsAgo(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_1_year_from_now_test() {
+  let result = era.parse("1 year from now")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.YearsFromNow(1)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_1_month_ago_test() {
+  let result = era.parse("1 month ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.MonthsAgo(1)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_6_months_from_now_test() {
+  let result = era.parse("6 months from now")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.MonthsFromNow(6)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// MORE WEEKDAY COMBINATIONS
+// ============================================================================
+
+pub fn parse_last_tuesday_test() {
+  let result = era.parse("last tuesday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.LastWeekday(Tuesday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_last_friday_test() {
+  let result = era.parse("last friday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.LastWeekday(Friday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_next_thursday_test() {
+  let result = era.parse("next thursday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Thursday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_thursday_test() {
+  let result = era.parse("thursday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Thursday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_saturday_test() {
+  let result = era.parse("saturday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(era.Saturday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_sunday_test() {
+  let result = era.parse("sunday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(era.Sunday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// MORE ABSOLUTE DATE FORMATS
+// ============================================================================
+
+pub fn parse_march_15_2024_test() {
+  let result = era.parse("March 15, 2024")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.year |> should.equal(Some(2024))
+        dt.month |> should.equal(Some(3))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_feb_1_test() {
+  let result = era.parse("Feb 1")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(2))
+        dt.day |> should.equal(Some(1))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_september_30_test() {
+  let result = era.parse("September 30")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(9))
+        dt.day |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_oct_15_2025_test() {
+  let result = era.parse("Oct 15, 2025")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.year |> should.equal(Some(2025))
+        dt.month |> should.equal(Some(10))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_nov_20_test() {
+  let result = era.parse("Nov 20")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(11))
+        dt.day |> should.equal(Some(20))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// Numeric date formats
+pub fn parse_01_15_2024_test() {
+  let result = era.parse("01/15/2024")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.year |> should.equal(Some(2024))
+        dt.month |> should.equal(Some(1))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_12_31_test() {
+  let result = era.parse("12/31")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(12))
+        dt.day |> should.equal(Some(31))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_3_15_test() {
+  let result = era.parse("3/15")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(3))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// MORE TIME FORMATS
+// ============================================================================
+
+pub fn parse_6am_test() {
+  let result = era.parse("6am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(6))
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_11pm_test() {
+  let result = era.parse("11pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(23))
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_3_30am_test() {
+  let result = era.parse("3:30am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(3))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_10_15pm_test() {
+  let result = era.parse("10:15pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(22))
+        dt.minute |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_00_00_test() {
+  let result = era.parse("00:00")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(0))
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_13_45_test() {
+  let result = era.parse("13:45")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(13))
+        dt.minute |> should.equal(Some(45))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_17_00_test() {
+  let result = era.parse("17:00")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> dt.hour |> should.equal(Some(17))
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_20_30_test() {
+  let result = era.parse("20:30")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.hour |> should.equal(Some(20))
+        dt.minute |> should.equal(Some(30))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// DATE + TIME COMBINATIONS
+// ============================================================================
+
+pub fn parse_march_15_at_3pm_test() {
+  let result = era.parse("March 15 at 3pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(3))
+        dt.day |> should.equal(Some(15))
+        dt.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_jan_1_2025_at_midnight_test() {
+  let result = era.parse("Jan 1, 2025 at midnight")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.year |> should.equal(Some(2025))
+        dt.month |> should.equal(Some(1))
+        dt.day |> should.equal(Some(1))
+        dt.hour |> should.equal(Some(0))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_december_25_noon_test() {
+  let result = era.parse("December 25 noon")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(12))
+        dt.day |> should.equal(Some(25))
+        dt.hour |> should.equal(Some(12))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_yesterday_at_3pm_test() {
+  let result = era.parse("yesterday at 3pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(Yesterday))
+        dt.hour |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_last_monday_at_9am_test() {
+  let result = era.parse("last monday at 9am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(era.LastWeekday(Monday)))
+        dt.hour |> should.equal(Some(9))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// MORE RECURRENCE PATTERNS
+// ============================================================================
+
+pub fn parse_monthly_test() {
+  let result = era.parse("monthly")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          era.Monthly -> Nil
+          _ -> panic as "Expected Monthly pattern"
+        }
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_yearly_test() {
+  let result = era.parse("yearly")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          era.Yearly -> Nil
+          _ -> panic as "Expected Yearly pattern"
+        }
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_every_wednesday_test() {
+  let result = era.parse("every wednesday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          EveryWeekday(days) -> days |> should.equal([Wednesday])
+          _ -> panic as "Expected EveryWeekday pattern"
+        }
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_every_thursday_at_2pm_test() {
+  let result = era.parse("every thursday at 2pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          EveryWeekday(days) -> days |> should.equal([Thursday])
+          _ -> panic as "Expected EveryWeekday pattern"
+        }
+        re.time.hour |> should.equal(Some(14))
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+pub fn parse_every_monday_wednesday_friday_test() {
+  let result = era.parse("every Monday and Wednesday and Friday")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Recurring(re) -> {
+        case re.pattern {
+          EveryWeekday(days) -> {
+            days |> should.equal([Monday, Wednesday, Friday])
+          }
+          _ -> panic as "Expected EveryWeekday pattern"
+        }
+      }
+      _ -> panic as "Expected Recurring"
+    }
+  }
+}
+
+// ============================================================================
+// MORE TIME RANGE TESTS
+// ============================================================================
+
+pub fn parse_6am_to_8am_test() {
+  let result = era.parse("6am to 8am")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(6))
+        tr.end.hour |> should.equal(Some(8))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+pub fn parse_2_4pm_test() {
+  let result = era.parse("2-4pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(14))
+        tr.end.hour |> should.equal(Some(16))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+pub fn parse_11am_to_1pm_test() {
+  let result = era.parse("11am to 1pm")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(11))
+        tr.end.hour |> should.equal(Some(13))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+pub fn parse_10pm_to_midnight_test() {
+  let result = era.parse("10pm to midnight")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      Range(tr) -> {
+        tr.start.hour |> should.equal(Some(22))
+        tr.end.hour |> should.equal(Some(0))
+      }
+      _ -> panic as "Expected Range"
+    }
+  }
+}
+
+// ============================================================================
+// ADDITIONAL MINUTE/HOUR OFFSET TESTS
+// ============================================================================
+
+pub fn parse_10_minutes_ago_test() {
+  let result = era.parse("10 minutes ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesAgo(10)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_45_minutes_from_now_test() {
+  let result = era.parse("45 minutes from now")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(45)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_5_minutes_test() {
+  let result = era.parse("in 5 minutes")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(MinutesFromNow(5)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_4_hours_from_now_test() {
+  let result = era.parse("4 hours from now")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursFromNow(4)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_6_hours_test() {
+  let result = era.parse("in 6 hours")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursFromNow(6)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_12_hours_ago_test() {
+  let result = era.parse("12 hours ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(HoursAgo(12)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// MORE DAY/WEEK OFFSET TESTS
+// ============================================================================
+
+pub fn parse_7_days_ago_test() {
+  let result = era.parse("7 days ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysAgo(7)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_10_days_test() {
+  let result = era.parse("in 10 days")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysFromNow(10)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_14_days_from_now_test() {
+  let result = era.parse("14 days from now")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(DaysFromNow(14)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_1_week_ago_test() {
+  let result = era.parse("1 week ago")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(WeeksAgo(1)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_3_weeks_from_now_test() {
+  let result = era.parse("3 weeks from now")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(WeeksFromNow(3)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_in_4_weeks_test() {
+  let result = era.parse("in 4 weeks")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(WeeksFromNow(4)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+// ============================================================================
+// ABBREVIATION TESTS
+// ============================================================================
+
+pub fn parse_tue_test() {
+  let result = era.parse("tue")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Tuesday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_thu_test() {
+  let result = era.parse("thu")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Thursday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_fri_test() {
+  let result = era.parse("fri")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(Friday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_sat_test() {
+  let result = era.parse("sat")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(era.Saturday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_sun_test() {
+  let result = era.parse("sun")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.relative |> should.equal(Some(NextWeekday(era.Sunday)))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_jan_test() {
+  let result = era.parse("Jan 15")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(1))
+        dt.day |> should.equal(Some(15))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
+
+pub fn parse_sept_test() {
+  let result = era.parse("Sept 10")
+  result
+  |> should.be_ok
+  |> fn(parsed) {
+    case parsed {
+      SinglePoint(dt) -> {
+        dt.month |> should.equal(Some(9))
+        dt.day |> should.equal(Some(10))
+      }
+      _ -> panic as "Expected SinglePoint"
+    }
+  }
+}
