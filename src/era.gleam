@@ -440,6 +440,35 @@ fn time() -> Parser(DateTime, Token, e) {
       })
     }),
 
+    // Hour:Minute:Second with optional meridiem: "14:30:45" or "3:45:30 PM"
+    do(number(), fn(hour) {
+      do(nibble.token(Colon), fn(_) {
+        do(number(), fn(minute) {
+          do(nibble.token(Colon), fn(_) {
+            do(number(), fn(second) {
+              do(nibble.optional(meridiem()), fn(maybe_meridiem) {
+                let adjusted_hour = case maybe_meridiem {
+                  Some(True) if hour < 12 -> hour + 12
+                  Some(True) if hour == 12 -> 12
+                  Some(False) if hour == 12 -> 0
+                  _ -> hour
+                }
+                return(DateTime(
+                  year: None,
+                  month: None,
+                  day: None,
+                  hour: Some(adjusted_hour),
+                  minute: Some(minute),
+                  second: Some(second),
+                  relative: None,
+                ))
+              })
+            })
+          })
+        })
+      })
+    }),
+
     // Hour:Minute with optional meridiem: "14:30" or "3:45 PM"
     do(number(), fn(hour) {
       do(nibble.token(Colon), fn(_) {
@@ -548,7 +577,7 @@ fn time_unit_years() -> Parser(Nil, Token, e) {
   ])
 }
 
-/// Parse relative offset: "3 days ago", "2 weeks from now"
+/// Parse relative offset: "3 days ago", "2 weeks from now", "in 3 days"
 fn relative_offset() -> Parser(DateTime, Token, e) {
   nibble.one_of([
     // N days/weeks/months/years ago
@@ -599,6 +628,31 @@ fn relative_offset() -> Parser(DateTime, Token, e) {
               relative: Some(rel),
             ))
           })
+        })
+      })
+    }),
+
+    // "in N days/weeks/months/years"
+    do(nibble.token(TokIn), fn(_) {
+      do(number(), fn(n) {
+        do(nibble.one_of([
+          time_unit_days() |> nibble.replace("days"),
+          time_unit_weeks() |> nibble.replace("weeks"),
+          time_unit_months() |> nibble.replace("months"),
+          time_unit_years() |> nibble.replace("years"),
+        ]), fn(unit) {
+          let rel = case unit {
+            "days" -> DaysFromNow(n)
+            "weeks" -> WeeksFromNow(n)
+            "months" -> MonthsFromNow(n)
+            "years" -> YearsFromNow(n)
+            _ -> DaysFromNow(n)
+          }
+          return(DateTime(
+            year: None, month: None, day: None,
+            hour: None, minute: None, second: None,
+            relative: Some(rel),
+          ))
         })
       })
     }),
