@@ -170,6 +170,7 @@ pub type Token {
   TokAfternoon
   TokEvening
   TokNight
+  TokTonight
   TokNoon
   TokMidnight
   // Keywords - AM/PM
@@ -274,6 +275,7 @@ pub fn lexer() -> lexer.Lexer(Token, Nil) {
     lexer.keyword("morning", "MORNING", TokMorning),
     lexer.keyword("afternoon", "AFTERNOON", TokAfternoon),
     lexer.keyword("evening", "EVENING", TokEvening),
+    lexer.keyword("tonight", "TONIGHT", TokTonight),
     lexer.keyword("night", "NIGHT", TokNight),
     lexer.keyword("noon", "NOON", TokNoon),
     lexer.keyword("midnight", "MIDNIGHT", TokMidnight),
@@ -369,9 +371,54 @@ fn meridiem() -> Parser(Bool, Token, e) {
   ])
 }
 
-/// Parse a time like "5pm", "14:30", "3:45:30 PM"
+/// Parse named times: "noon", "midnight"
+fn named_time() -> Parser(DateTime, Token, e) {
+  nibble.one_of([
+    nibble.token(TokNoon) |> nibble.replace(DateTime(
+      year: None, month: None, day: None,
+      hour: Some(12), minute: Some(0), second: Some(0),
+      relative: None,
+    )),
+    nibble.token(TokMidnight) |> nibble.replace(DateTime(
+      year: None, month: None, day: None,
+      hour: Some(0), minute: Some(0), second: Some(0),
+      relative: None,
+    )),
+  ])
+}
+
+/// Parse time of day: "morning", "afternoon", "evening", "night"
+fn time_of_day() -> Parser(DateTime, Token, e) {
+  nibble.one_of([
+    nibble.token(TokMorning) |> nibble.replace(DateTime(
+      year: None, month: None, day: None,
+      hour: Some(6), minute: Some(0), second: Some(0),
+      relative: None,
+    )),
+    nibble.token(TokAfternoon) |> nibble.replace(DateTime(
+      year: None, month: None, day: None,
+      hour: Some(15), minute: Some(0), second: Some(0),
+      relative: None,
+    )),
+    nibble.token(TokEvening) |> nibble.replace(DateTime(
+      year: None, month: None, day: None,
+      hour: Some(20), minute: Some(0), second: Some(0),
+      relative: None,
+    )),
+    nibble.token(TokNight) |> nibble.replace(DateTime(
+      year: None, month: None, day: None,
+      hour: Some(22), minute: Some(0), second: Some(0),
+      relative: None,
+    )),
+  ])
+}
+
+/// Parse a time like "5pm", "14:30", "3:45:30 PM", "noon", "midnight"
 fn time() -> Parser(DateTime, Token, e) {
   nibble.one_of([
+    // Named times: "noon", "midnight"
+    named_time(),
+
     // Simple hour with meridiem: "5pm"
     do(number(), fn(hour) {
       do(meridiem(), fn(is_pm) {
@@ -472,6 +519,128 @@ fn last_weekday() -> Parser(DateTime, Token, e) {
   })
 }
 
+/// Parse time unit tokens (singular or plural)
+fn time_unit_days() -> Parser(Nil, Token, e) {
+  nibble.one_of([
+    nibble.token(TokDay),
+    nibble.token(TokDays),
+  ])
+}
+
+fn time_unit_weeks() -> Parser(Nil, Token, e) {
+  nibble.one_of([
+    nibble.token(TokWeek),
+    nibble.token(TokWeeks),
+  ])
+}
+
+fn time_unit_months() -> Parser(Nil, Token, e) {
+  nibble.one_of([
+    nibble.token(TokMonth),
+    nibble.token(TokMonths),
+  ])
+}
+
+fn time_unit_years() -> Parser(Nil, Token, e) {
+  nibble.one_of([
+    nibble.token(TokYear),
+    nibble.token(TokYears),
+  ])
+}
+
+/// Parse relative offset: "3 days ago", "2 weeks from now"
+fn relative_offset() -> Parser(DateTime, Token, e) {
+  nibble.one_of([
+    // N days/weeks/months/years ago
+    do(number(), fn(n) {
+      do(nibble.one_of([
+        time_unit_days() |> nibble.replace("days"),
+        time_unit_weeks() |> nibble.replace("weeks"),
+        time_unit_months() |> nibble.replace("months"),
+        time_unit_years() |> nibble.replace("years"),
+      ]), fn(unit) {
+        do(nibble.token(TokAgo), fn(_) {
+          let rel = case unit {
+            "days" -> DaysAgo(n)
+            "weeks" -> WeeksAgo(n)
+            "months" -> MonthsAgo(n)
+            "years" -> YearsAgo(n)
+            _ -> DaysAgo(n)
+          }
+          return(DateTime(
+            year: None, month: None, day: None,
+            hour: None, minute: None, second: None,
+            relative: Some(rel),
+          ))
+        })
+      })
+    }),
+
+    // N days/weeks/months/years from now
+    do(number(), fn(n) {
+      do(nibble.one_of([
+        time_unit_days() |> nibble.replace("days"),
+        time_unit_weeks() |> nibble.replace("weeks"),
+        time_unit_months() |> nibble.replace("months"),
+        time_unit_years() |> nibble.replace("years"),
+      ]), fn(unit) {
+        do(nibble.token(TokFrom), fn(_) {
+          do(nibble.optional(nibble.token(TokNow)), fn(_) {
+            let rel = case unit {
+              "days" -> DaysFromNow(n)
+              "weeks" -> WeeksFromNow(n)
+              "months" -> MonthsFromNow(n)
+              "years" -> YearsFromNow(n)
+              _ -> DaysFromNow(n)
+            }
+            return(DateTime(
+              year: None, month: None, day: None,
+              hour: None, minute: None, second: None,
+              relative: Some(rel),
+            ))
+          })
+        })
+      })
+    }),
+  ])
+}
+
+/// Parse "this [time of day]": "this morning", "this afternoon"
+fn this_time_of_day() -> Parser(DateTime, Token, e) {
+  do(nibble.token(TokThis), fn(_) {
+    do(time_of_day(), fn(tod) {
+      return(combine_date_time(
+        DateTime(year: None, month: None, day: None,
+                 hour: None, minute: None, second: None,
+                 relative: Some(Today)),
+        tod
+      ))
+    })
+  })
+}
+
+/// Parse "last night"
+fn last_night() -> Parser(DateTime, Token, e) {
+  do(nibble.token(TokLast), fn(_) {
+    do(nibble.token(TokNight), fn(_) {
+      return(DateTime(
+        year: None, month: None, day: None,
+        hour: Some(0), minute: Some(0), second: Some(0),
+        relative: Some(Yesterday),
+      ))
+    })
+  })
+}
+
+/// Parse "tonight"
+fn tonight() -> Parser(DateTime, Token, e) {
+  nibble.token(TokTonight) |> nibble.replace(DateTime(
+    year: None, month: None, day: None,
+    hour: Some(22), minute: Some(0), second: Some(0),
+    relative: Some(Today),
+  ))
+}
+
 /// Combine a date with a time
 fn combine_date_time(date: DateTime, time: DateTime) -> DateTime {
   DateTime(
@@ -485,16 +654,125 @@ fn combine_date_time(date: DateTime, time: DateTime) -> DateTime {
   )
 }
 
+/// Parse month tokens
+fn month() -> Parser(Int, Token, e) {
+  nibble.one_of([
+    nibble.token(TokJanuary) |> nibble.replace(1),
+    nibble.token(TokFebruary) |> nibble.replace(2),
+    nibble.token(TokMarch) |> nibble.replace(3),
+    nibble.token(TokApril) |> nibble.replace(4),
+    nibble.token(TokMay) |> nibble.replace(5),
+    nibble.token(TokJune) |> nibble.replace(6),
+    nibble.token(TokJuly) |> nibble.replace(7),
+    nibble.token(TokAugust) |> nibble.replace(8),
+    nibble.token(TokSeptember) |> nibble.replace(9),
+    nibble.token(TokOctober) |> nibble.replace(10),
+    nibble.token(TokNovember) |> nibble.replace(11),
+    nibble.token(TokDecember) |> nibble.replace(12),
+  ])
+}
+
+/// Parse absolute date: "August 25, 2006" or "August 25"
+fn absolute_date() -> Parser(DateTime, Token, e) {
+  nibble.one_of([
+    // "August 25, 2006"
+    do(month(), fn(m) {
+      do(number(), fn(day) {
+        do(nibble.optional(nibble.token(Comma)), fn(_) {
+          do(nibble.optional(number()), fn(maybe_year) {
+            return(DateTime(
+              year: maybe_year,
+              month: Some(m),
+              day: Some(day),
+              hour: None,
+              minute: None,
+              second: None,
+              relative: None,
+            ))
+          })
+        })
+      })
+    }),
+
+    // "08/25/2006" or "8/25" (MM/DD or MM/DD/YYYY)
+    do(number(), fn(m) {
+      do(nibble.token(Slash), fn(_) {
+        do(number(), fn(day) {
+          do(nibble.optional(nibble.token(Slash)), fn(_) {
+            do(nibble.optional(number()), fn(maybe_year) {
+              return(DateTime(
+                year: maybe_year,
+                month: Some(m),
+                day: Some(day),
+                hour: None,
+                minute: None,
+                second: None,
+                relative: None,
+              ))
+            })
+          })
+        })
+      })
+    }),
+  ])
+}
+
 /// Parse a single point in time (date + optional time)
 fn single_point() -> Parser(DateTime, Token, e) {
   nibble.one_of([
-    // Date with time: "tomorrow at 5pm"
+    // Special cases first
+    last_night(),
+    tonight(),
+    this_time_of_day(),
+
+    // Relative offsets: "3 days ago", "2 weeks from now"
+    do(relative_offset(), fn(date) {
+      do(nibble.optional(nibble.token(TokAt)), fn(_) {
+        do(nibble.optional(time()), fn(maybe_time) {
+          case maybe_time {
+            Some(t) -> return(combine_date_time(date, t))
+            None -> return(date)
+          }
+        })
+      })
+    }),
+
+    // Absolute date with optional time: "August 25 5pm"
+    do(absolute_date(), fn(date) {
+      do(nibble.optional(nibble.token(TokAt)), fn(_) {
+        do(nibble.optional(time()), fn(maybe_time) {
+          case maybe_time {
+            Some(t) -> return(combine_date_time(date, t))
+            None -> return(date)
+          }
+        })
+      })
+    }),
+
+    // Date with time: "tomorrow at 5pm", "next tuesday at 5pm"
     do(nibble.one_of([relative_day(), next_weekday(), last_weekday()]), fn(date) {
       do(nibble.optional(nibble.token(TokAt)), fn(_) {
         do(nibble.optional(time()), fn(maybe_time) {
           case maybe_time {
             Some(t) -> return(combine_date_time(date, t))
             None -> return(date)
+          }
+        })
+      })
+    }),
+
+    // Standalone weekday: "friday" (implies "next friday")
+    do(weekday(), fn(day) {
+      do(nibble.optional(nibble.token(TokAt)), fn(_) {
+        do(nibble.optional(time()), fn(maybe_time) {
+          let base = DateTime(
+            year: None, month: None, day: None,
+            hour: None, minute: None, second: None,
+            relative: Some(NextWeekday(day)),
+          )
+          case maybe_time {
+            Some(t) -> return(combine_date_time(base, t))
+            None -> return(base)
           }
         })
       })
@@ -547,10 +825,198 @@ fn multiple_points() -> Parser(List(DateTime), Token, e) {
   })
 }
 
+/// Parse time ranges like "4-5pm", "8pm-11pm", "10am to noon"
+fn time_range() -> Parser(TimeRange, Token, e) {
+  nibble.one_of([
+    // Pattern: "4-5pm" or "8-11pm" (shared meridiem)
+    do(number(), fn(start_hour) {
+      do(nibble.token(Dash), fn(_) {
+        do(number(), fn(end_hour) {
+          do(meridiem(), fn(is_pm) {
+            let adjusted_start = case is_pm, start_hour {
+              True, h if h < 12 -> h + 12
+              True, 12 -> 12
+              False, 12 -> 0
+              False, h -> h
+            }
+            let adjusted_end = case is_pm, end_hour {
+              True, h if h < 12 -> h + 12
+              True, 12 -> 12
+              False, 12 -> 0
+              False, h -> h
+            }
+            return(TimeRange(
+              start: DateTime(
+                year: None, month: None, day: None,
+                hour: Some(adjusted_start), minute: Some(0), second: Some(0),
+                relative: Some(Today),
+              ),
+              end: DateTime(
+                year: None, month: None, day: None,
+                hour: Some(adjusted_end), minute: Some(0), second: Some(0),
+                relative: Some(Today),
+              ),
+            ))
+          })
+        })
+      })
+    }),
+
+    // Pattern: "8pm - 11pm" or "10am to 5pm" (separate meridiems)
+    do(number(), fn(start_hour) {
+      do(meridiem(), fn(start_is_pm) {
+        do(nibble.one_of([nibble.token(Dash), nibble.token(TokTo)]), fn(_) {
+          do(number(), fn(end_hour) {
+            do(meridiem(), fn(end_is_pm) {
+              let adjusted_start = case start_is_pm, start_hour {
+                True, h if h < 12 -> h + 12
+                True, 12 -> 12
+                False, 12 -> 0
+                False, h -> h
+              }
+              let adjusted_end = case end_is_pm, end_hour {
+                True, h if h < 12 -> h + 12
+                True, 12 -> 12
+                False, 12 -> 0
+                False, h -> h
+              }
+              return(TimeRange(
+                start: DateTime(
+                  year: None, month: None, day: None,
+                  hour: Some(adjusted_start), minute: Some(0), second: Some(0),
+                  relative: Some(Today),
+                ),
+                end: DateTime(
+                  year: None, month: None, day: None,
+                  hour: Some(adjusted_end), minute: Some(0), second: Some(0),
+                  relative: Some(Today),
+                ),
+              ))
+            })
+          })
+        })
+      })
+    }),
+
+    // Pattern: "10am to noon"
+    do(time(), fn(start_time) {
+      do(nibble.one_of([nibble.token(Dash), nibble.token(TokTo)]), fn(_) {
+        do(time(), fn(end_time) {
+          return(TimeRange(
+            start: combine_date_time(
+              DateTime(year: None, month: None, day: None,
+                       hour: None, minute: None, second: None,
+                       relative: Some(Today)),
+              start_time
+            ),
+            end: combine_date_time(
+              DateTime(year: None, month: None, day: None,
+                       hour: None, minute: None, second: None,
+                       relative: Some(Today)),
+              end_time
+            ),
+          ))
+        })
+      })
+    }),
+  ])
+}
+
+/// Parse recurrence patterns
+fn recurrence_pattern() -> Parser(RecurringEvent, Token, e) {
+  nibble.one_of([
+    // "every [weekday]" or "every [weekday] and [weekday]"
+    do(nibble.token(TokEvery), fn(_) {
+      do(weekday(), fn(day1) {
+        do(nibble.optional(
+          do(nibble.token(TokAnd), fn(_) {
+            nibble.many1(
+              do(nibble.optional(nibble.token(Comma)), fn(_) {
+                do(nibble.optional(nibble.token(TokAnd)), fn(_) {
+                  weekday()
+                })
+              })
+            )
+          })
+        ), fn(maybe_more_days) {
+          let all_days = case maybe_more_days {
+            Some(more) -> [day1, ..more]
+            None -> [day1]
+          }
+          // Optionally parse time
+          do(nibble.optional(nibble.token(TokAt)), fn(_) {
+            do(nibble.optional(time()), fn(maybe_time) {
+              // Optionally parse "until [date]"
+              do(nibble.optional(
+                do(nibble.token(TokUntil), fn(_) {
+                  single_point()
+                })
+              ), fn(maybe_until) {
+                let base_time = case maybe_time {
+                  Some(t) -> t
+                  None -> DateTime(
+                    year: None, month: None, day: None,
+                    hour: None, minute: None, second: None,
+                    relative: None,
+                  )
+                }
+                return(RecurringEvent(
+                  pattern: EveryWeekday(all_days),
+                  time: base_time,
+                  until: maybe_until,
+                ))
+              })
+            })
+          })
+        })
+      })
+    }),
+
+    // "daily" / "weekly" / "monthly" / "yearly"
+    nibble.one_of([
+      nibble.token(TokDaily) |> nibble.replace(Daily),
+      nibble.token(TokWeekly) |> nibble.replace(Weekly),
+      nibble.token(TokMonthly) |> nibble.replace(Monthly),
+      nibble.token(TokYearly) |> nibble.replace(Yearly),
+    ])
+    |> nibble.then(fn(pattern) {
+      // Optionally parse time
+      do(nibble.optional(nibble.token(TokAt)), fn(_) {
+        do(nibble.optional(time()), fn(maybe_time) {
+          // Optionally parse "until [date]"
+          do(nibble.optional(
+            do(nibble.token(TokUntil), fn(_) {
+              single_point()
+            })
+          ), fn(maybe_until) {
+            let base_time = case maybe_time {
+              Some(t) -> t
+              None -> DateTime(
+                year: None, month: None, day: None,
+                hour: None, minute: None, second: None,
+                relative: None,
+              )
+            }
+            return(RecurringEvent(
+              pattern: pattern,
+              time: base_time,
+              until: maybe_until,
+            ))
+          })
+        })
+      })
+    }),
+  ])
+}
+
 /// Main parser that handles all cases
 fn date_expression() -> Parser(ParsedDate, Token, e) {
   nibble.one_of([
-    // Try multiple points first
+    // Try recurrence patterns first
+    recurrence_pattern() |> nibble.map(Recurring),
+    // Try time ranges
+    time_range() |> nibble.map(Range),
+    // Try multiple points
     multiple_points() |> nibble.map(MultiplePoints),
     // Then single point
     single_point() |> nibble.map(SinglePoint),
