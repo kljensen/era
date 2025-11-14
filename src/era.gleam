@@ -763,6 +763,171 @@ pub fn midnight() -> DateTime {
   time(0, 0)
 }
 
+// ============================================================================
+// RECURRING EVENT HELPERS
+// ============================================================================
+
+/// Create a daily recurring event at a specific time
+///
+/// ## Examples
+/// ```gleam
+/// daily(time(9, 0))  // Every day at 9am
+/// daily(time_pm(2, 30))  // Every day at 2:30pm
+/// ```
+pub fn daily(at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Daily, time: at, until: None)
+}
+
+/// Create a daily recurring event that ends on a specific date
+///
+/// ## Examples
+/// ```gleam
+/// daily_until(time(9, 0), date(2024, 12, 31))  // Every day at 9am until Dec 31
+/// ```
+pub fn daily_until(at: DateTime, end: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Daily, time: at, until: Some(end))
+}
+
+/// Create a weekly recurring event at a specific time
+///
+/// ## Examples
+/// ```gleam
+/// weekly(time(14, 0))  // Every week at 2pm
+/// ```
+pub fn weekly(at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Weekly, time: at, until: None)
+}
+
+/// Create a weekly recurring event that ends on a specific date
+///
+/// ## Examples
+/// ```gleam
+/// weekly_until(time(10, 0), date(2025, 6, 1))  // Every week at 10am until June 1
+/// ```
+pub fn weekly_until(at: DateTime, end: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Weekly, time: at, until: Some(end))
+}
+
+/// Create a monthly recurring event at a specific time
+///
+/// ## Examples
+/// ```gleam
+/// monthly(time(9, 0))  // Every month at 9am
+/// ```
+pub fn monthly(at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Monthly, time: at, until: None)
+}
+
+/// Create a monthly recurring event that ends on a specific date
+///
+/// ## Examples
+/// ```gleam
+/// monthly_until(time(15, 0), date(2025, 12, 31))  // Every month at 3pm until end of year
+/// ```
+pub fn monthly_until(at: DateTime, end: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Monthly, time: at, until: Some(end))
+}
+
+/// Create a yearly recurring event at a specific time
+///
+/// ## Examples
+/// ```gleam
+/// yearly(datetime(2024, 1, 1, 0, 0))  // Every year on Jan 1 at midnight
+/// ```
+pub fn yearly(at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Yearly, time: at, until: None)
+}
+
+/// Create a yearly recurring event that ends on a specific date
+///
+/// ## Examples
+/// ```gleam
+/// yearly_until(datetime(2024, 7, 4, 12, 0), date(2030, 12, 31))  // Every July 4th at noon until 2030
+/// ```
+pub fn yearly_until(at: DateTime, end: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: Yearly, time: at, until: Some(end))
+}
+
+/// Create a recurring event for specific weekdays
+///
+/// ## Examples
+/// ```gleam
+/// every_weekday([Monday, Wednesday, Friday], time(9, 0))  // MWF at 9am
+/// every_weekday([Tuesday, Thursday], time_pm(2, 0))  // Tue/Thu at 2pm
+/// ```
+pub fn every_weekday(days: List(Weekday), at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: EveryWeekday(days), time: at, until: None)
+}
+
+/// Create a recurring event for specific weekdays that ends on a date
+///
+/// ## Examples
+/// ```gleam
+/// every_weekday_until([Monday, Wednesday], time(10, 0), date(2025, 6, 1))
+/// ```
+pub fn every_weekday_until(
+  days: List(Weekday),
+  at: DateTime,
+  end: DateTime,
+) -> RecurringEvent {
+  RecurringEvent(pattern: EveryWeekday(days), time: at, until: Some(end))
+}
+
+/// Create a recurring event for a single weekday
+///
+/// ## Examples
+/// ```gleam
+/// every(Monday, time(9, 0))  // Every Monday at 9am
+/// every(Friday, time_pm(5, 0))  // Every Friday at 5pm
+/// ```
+pub fn every(day: Weekday, at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: EveryWeekday([day]), time: at, until: None)
+}
+
+/// Create a recurring event for a single weekday that ends on a date
+///
+/// ## Examples
+/// ```gleam
+/// every_until(Tuesday, time(14, 0), date(2025, 12, 31))  // Every Tuesday at 2pm until end of year
+/// ```
+pub fn every_until(day: Weekday, at: DateTime, end: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: EveryWeekday([day]), time: at, until: Some(end))
+}
+
+/// Create a recurring event every N days
+///
+/// ## Examples
+/// ```gleam
+/// every_n_days(3, time(10, 0))  // Every 3 days at 10am
+/// ```
+pub fn every_n_days(n: Int, at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: EveryNDays(n), time: at, until: None)
+}
+
+/// Create a recurring event every N weeks
+///
+/// ## Examples
+/// ```gleam
+/// every_n_weeks(2, time(9, 0))  // Every 2 weeks (bi-weekly) at 9am
+/// ```
+pub fn every_n_weeks(n: Int, at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: EveryNWeeks(n), time: at, until: None)
+}
+
+/// Create a recurring event every N months
+///
+/// ## Examples
+/// ```gleam
+/// every_n_months(3, time(15, 0))  // Every 3 months (quarterly) at 3pm
+/// ```
+pub fn every_n_months(n: Int, at: DateTime) -> RecurringEvent {
+  RecurringEvent(pattern: EveryNMonths(n), time: at, until: None)
+}
+
+// ============================================================================
+// INSPECTION FUNCTIONS
+// ============================================================================
+
 /// Check if a ParsedDate represents a single point in time
 ///
 /// ## Examples
