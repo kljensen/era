@@ -75,11 +75,31 @@ Instead of constructing DateTime values manually, use these helpers:
 
 ### time(Int, Int) -> DateTime
 
-Create a time for today.
+Create a time for today (24-hour format).
 
 ```gleam
 era.time(14, 30)  // Today at 2:30pm
 era.time(9, 0)    // Today at 9:00am
+```
+
+### time_pm(Int, Int) -> DateTime
+
+Create a time for today in PM (12-hour format).
+
+```gleam
+era.time_pm(5, 30)   // Today at 5:30pm (17:30)
+era.time_pm(12, 0)   // Today at noon (12:00)
+era.time_pm(1, 15)   // Today at 1:15pm (13:15)
+```
+
+### time_am(Int, Int) -> DateTime
+
+Create a time for today in AM (12-hour format).
+
+```gleam
+era.time_am(9, 0)    // Today at 9:00am
+era.time_am(12, 0)   // Today at midnight (00:00)
+era.time_am(6, 30)   // Today at 6:30am
 ```
 
 ### date(Int, Int, Int) -> DateTime
@@ -123,6 +143,98 @@ Create a time range.
 
 ```gleam
 era.range(era.time(9, 0), era.time(17, 0))  // 9am to 5pm today
+```
+
+## Ergonomic Helpers
+
+These convenience functions make common tasks simple and intuitive:
+
+### Simple Relative Times
+
+```gleam
+era.now()        // Current moment
+era.today()      // Today
+era.tomorrow()   // Tomorrow
+era.yesterday()  // Yesterday
+```
+
+### Tomorrow With Time
+
+```gleam
+era.tomorrow_at(14, 30)        // Tomorrow at 2:30pm (24-hour)
+era.tomorrow_at_pm(5, 30)      // Tomorrow at 5:30pm
+era.tomorrow_at_am(9, 0)       // Tomorrow at 9:00am
+```
+
+### Common Times
+
+```gleam
+era.noon()       // Today at 12:00pm
+era.midnight()   // Today at 00:00
+```
+
+### Weekday Helpers
+
+Get the next or last occurrence of a weekday:
+
+```gleam
+era.next(era.Monday)           // Next Monday
+era.next_at(era.Monday, 9, 0)  // Next Monday at 9am
+era.last(era.Friday)           // Last Friday
+era.last_at(era.Friday, 17, 0) // Last Friday at 5pm
+```
+
+### Specific Weekday Functions
+
+For better discoverability, each weekday has dedicated functions:
+
+```gleam
+// Next occurrence
+era.next_monday()
+era.next_tuesday()
+era.next_wednesday()
+era.next_thursday()
+era.next_friday()
+era.next_saturday()
+era.next_sunday()
+
+// Next occurrence at specific time
+era.next_monday_at(9, 0)
+era.next_tuesday_at(14, 30)
+era.next_wednesday_at(10, 0)
+// ... and so on for all weekdays
+
+// Last occurrence
+era.last_monday()
+era.last_tuesday()
+// ... and so on
+
+// Last occurrence at specific time
+era.last_monday_at(17, 0)
+era.last_tuesday_at(15, 30)
+// ... and so on
+```
+
+### Time Offset Helpers
+
+Create times relative to now:
+
+```gleam
+// Future
+era.in_minutes(30)    // 30 minutes from now
+era.in_hours(2)       // 2 hours from now
+era.in_days(3)        // 3 days from now
+era.in_weeks(2)       // 2 weeks from now
+era.in_months(6)      // 6 months from now
+era.in_years(1)       // 1 year from now
+
+// Past
+era.ago_minutes(15)   // 15 minutes ago
+era.ago_hours(3)      // 3 hours ago
+era.ago_days(7)       // 7 days ago (last week)
+era.ago_weeks(4)      // 4 weeks ago
+era.ago_months(2)     // 2 months ago
+era.ago_years(5)      // 5 years ago
 ```
 
 ## Inspection Functions
@@ -289,9 +401,10 @@ era.is_relative(era.date(2024, 12, 25))      // False
 ```gleam
 import era
 import gleam/io
+import gleam/list
 
 pub fn main() {
-  // Parse various expressions
+  // Parse natural language expressions
   let examples = [
     "tomorrow at 5pm",
     "next Tuesday and Thursday at 3pm",
@@ -315,9 +428,26 @@ pub fn main() {
     }
   })
 
-  // Build and validate a custom DateTime
-  let my_time = era.time(14, 30)
-  case era.validate(my_time) {
+  // Use ergonomic builder functions (no parsing needed!)
+  let meeting = era.next_monday_at(14, 30)
+  io.println("Next meeting: " <> era.format_datetime(meeting))
+
+  let deadline = era.in_days(7)
+  io.println("Deadline: " <> era.format_datetime(deadline))
+
+  let lunch = era.tomorrow_at_pm(12, 0)
+  io.println("Lunch: " <> era.format_datetime(lunch))
+
+  // Create ranges easily
+  let work_hours = era.range(
+    era.time_am(9, 0),
+    era.time_pm(5, 0)
+  )
+  io.println("Work hours: " <> era.format_range(work_hours))
+
+  // Validate if needed
+  let custom_time = era.time_pm(2, 30)
+  case era.validate(custom_time) {
     Ok(dt) -> {
       io.println("Valid time: " <> era.format_datetime(dt))
     }
@@ -377,7 +507,7 @@ let assert Ok(dt) = era.to_single_point(result)
 If you were previously constructing DateTime values manually:
 
 ```gleam
-// Before (verbose)
+// Before (very verbose)
 DateTime(
   year: None,
   month: None,
@@ -388,8 +518,23 @@ DateTime(
   relative: Some(Today),
 )
 
-// After (concise)
+// After with builders (concise)
 era.time(14, 30)
+
+// Even better with AM/PM helpers (most intuitive)
+era.time_pm(2, 30)
 ```
 
-All the builder functions are designed to match common use cases and reduce boilerplate.
+Similarly for relative times:
+
+```gleam
+// Before (verbose)
+era.relative(Tomorrow)
+era.relative_time(NextWeekday(Monday), 9, 0)
+
+// After with ergonomic helpers (simple)
+era.tomorrow()
+era.next_monday_at(9, 0)
+```
+
+All the builder and helper functions are designed to match common use cases and reduce boilerplate while improving readability.
