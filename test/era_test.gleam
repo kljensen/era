@@ -6986,3 +6986,479 @@ pub fn parse_next_summer_expected_fail_test() {
   // Would need season definitions and date ranges
   result |> should.be_error
 }
+
+// ============================================================================
+// HELPER FUNCTION TESTS - Testing the ergonomic API
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Time Helpers
+// ----------------------------------------------------------------------------
+
+pub fn time_pm_test() {
+  let result = era.time_pm(5, 30)
+  result.hour |> should.equal(Some(17))
+  result.minute |> should.equal(Some(30))
+}
+
+pub fn time_pm_noon_test() {
+  let result = era.time_pm(12, 0)
+  result.hour |> should.equal(Some(12))
+}
+
+pub fn time_am_test() {
+  let result = era.time_am(9, 15)
+  result.hour |> should.equal(Some(9))
+  result.minute |> should.equal(Some(15))
+}
+
+pub fn time_am_midnight_test() {
+  let result = era.time_am(12, 0)
+  result.hour |> should.equal(Some(0))
+}
+
+pub fn noon_test() {
+  let result = era.noon()
+  result.hour |> should.equal(Some(12))
+  result.minute |> should.equal(Some(0))
+}
+
+pub fn midnight_test() {
+  let result = era.midnight()
+  result.hour |> should.equal(Some(0))
+  result.minute |> should.equal(Some(0))
+}
+
+// ----------------------------------------------------------------------------
+// Relative Time Helpers
+// ----------------------------------------------------------------------------
+
+pub fn now_helper_test() {
+  let result = era.now()
+  result.relative |> should.equal(Some(era.Now))
+}
+
+pub fn today_helper_test() {
+  let result = era.today()
+  result.relative |> should.equal(Some(era.Today))
+}
+
+pub fn tomorrow_helper_test() {
+  let result = era.tomorrow()
+  result.relative |> should.equal(Some(era.Tomorrow))
+}
+
+pub fn yesterday_helper_test() {
+  let result = era.yesterday()
+  result.relative |> should.equal(Some(era.Yesterday))
+}
+
+pub fn tomorrow_at_test() {
+  let result = era.tomorrow_at(14, 30)
+  result.relative |> should.equal(Some(era.Tomorrow))
+  result.hour |> should.equal(Some(14))
+  result.minute |> should.equal(Some(30))
+}
+
+pub fn tomorrow_at_pm_test() {
+  let result = era.tomorrow_at_pm(5, 30)
+  result.relative |> should.equal(Some(era.Tomorrow))
+  result.hour |> should.equal(Some(17))
+  result.minute |> should.equal(Some(30))
+}
+
+pub fn tomorrow_at_am_test() {
+  let result = era.tomorrow_at_am(9, 0)
+  result.relative |> should.equal(Some(era.Tomorrow))
+  result.hour |> should.equal(Some(9))
+  result.minute |> should.equal(Some(0))
+}
+
+// ----------------------------------------------------------------------------
+// Weekday Helpers
+// ----------------------------------------------------------------------------
+
+pub fn next_weekday_test() {
+  let result = era.next(era.Monday)
+  result.relative |> should.equal(Some(era.NextWeekday(era.Monday)))
+}
+
+pub fn next_at_test() {
+  let result = era.next_at(era.Friday, 17, 0)
+  result.relative |> should.equal(Some(era.NextWeekday(era.Friday)))
+  result.hour |> should.equal(Some(17))
+  result.minute |> should.equal(Some(0))
+}
+
+pub fn last_weekday_test() {
+  let result = era.last(era.Wednesday)
+  result.relative |> should.equal(Some(era.LastWeekday(era.Wednesday)))
+}
+
+pub fn last_at_test() {
+  let result = era.last_at(era.Tuesday, 10, 30)
+  result.relative |> should.equal(Some(era.LastWeekday(era.Tuesday)))
+  result.hour |> should.equal(Some(10))
+  result.minute |> should.equal(Some(30))
+}
+
+pub fn next_monday_test() {
+  let result = era.next_monday()
+  result.relative |> should.equal(Some(era.NextWeekday(era.Monday)))
+}
+
+pub fn next_monday_at_test() {
+  let result = era.next_monday_at(9, 0)
+  result.relative |> should.equal(Some(era.NextWeekday(era.Monday)))
+  result.hour |> should.equal(Some(9))
+}
+
+pub fn next_tuesday_test() {
+  let result = era.next_tuesday()
+  result.relative |> should.equal(Some(era.NextWeekday(era.Tuesday)))
+}
+
+pub fn next_friday_at_test() {
+  let result = era.next_friday_at(17, 0)
+  result.relative |> should.equal(Some(era.NextWeekday(era.Friday)))
+  result.hour |> should.equal(Some(17))
+}
+
+pub fn last_monday_test() {
+  let result = era.last_monday()
+  result.relative |> should.equal(Some(era.LastWeekday(era.Monday)))
+}
+
+pub fn last_friday_at_test() {
+  let result = era.last_friday_at(15, 30)
+  result.relative |> should.equal(Some(era.LastWeekday(era.Friday)))
+  result.hour |> should.equal(Some(15))
+}
+
+// ----------------------------------------------------------------------------
+// Offset Helpers
+// ----------------------------------------------------------------------------
+
+pub fn in_minutes_test() {
+  let result = era.in_minutes(30)
+  result.relative |> should.equal(Some(era.MinutesFromNow(30)))
+}
+
+pub fn ago_minutes_test() {
+  let result = era.ago_minutes(15)
+  result.relative |> should.equal(Some(era.MinutesAgo(15)))
+}
+
+pub fn in_hours_test() {
+  let result = era.in_hours(2)
+  result.relative |> should.equal(Some(era.HoursFromNow(2)))
+}
+
+pub fn ago_hours_test() {
+  let result = era.ago_hours(3)
+  result.relative |> should.equal(Some(era.HoursAgo(3)))
+}
+
+pub fn in_days_test() {
+  let result = era.in_days(5)
+  result.relative |> should.equal(Some(era.DaysFromNow(5)))
+}
+
+pub fn ago_days_test() {
+  let result = era.ago_days(7)
+  result.relative |> should.equal(Some(era.DaysAgo(7)))
+}
+
+pub fn in_weeks_test() {
+  let result = era.in_weeks(2)
+  result.relative |> should.equal(Some(era.WeeksFromNow(2)))
+}
+
+pub fn ago_weeks_test() {
+  let result = era.ago_weeks(1)
+  result.relative |> should.equal(Some(era.WeeksAgo(1)))
+}
+
+pub fn in_months_test() {
+  let result = era.in_months(6)
+  result.relative |> should.equal(Some(era.MonthsFromNow(6)))
+}
+
+pub fn ago_months_test() {
+  let result = era.ago_months(2)
+  result.relative |> should.equal(Some(era.MonthsAgo(2)))
+}
+
+pub fn in_years_test() {
+  let result = era.in_years(1)
+  result.relative |> should.equal(Some(era.YearsFromNow(1)))
+}
+
+pub fn ago_years_test() {
+  let result = era.ago_years(5)
+  result.relative |> should.equal(Some(era.YearsAgo(5)))
+}
+
+// ----------------------------------------------------------------------------
+// Recurring Event Helpers
+// ----------------------------------------------------------------------------
+
+pub fn daily_helper_test() {
+  let result = era.daily(era.time(9, 0))
+  result.pattern |> should.equal(era.Daily)
+  result.time.hour |> should.equal(Some(9))
+  result.until |> should.equal(None)
+}
+
+pub fn daily_until_test() {
+  let end = era.date(2024, 12, 31)
+  let result = era.daily_until(era.time(9, 0), end)
+  result.pattern |> should.equal(era.Daily)
+  result.until |> should.equal(Some(end))
+}
+
+pub fn weekly_helper_test() {
+  let result = era.weekly(era.time(14, 0))
+  result.pattern |> should.equal(era.Weekly)
+  result.time.hour |> should.equal(Some(14))
+}
+
+pub fn weekly_until_test() {
+  let end = era.date(2025, 6, 1)
+  let result = era.weekly_until(era.time(10, 0), end)
+  result.pattern |> should.equal(era.Weekly)
+  result.until |> should.equal(Some(end))
+}
+
+pub fn monthly_helper_test() {
+  let result = era.monthly(era.time(9, 0))
+  result.pattern |> should.equal(era.Monthly)
+}
+
+pub fn yearly_helper_test() {
+  let result = era.yearly(era.datetime(2024, 7, 4, 12, 0))
+  result.pattern |> should.equal(era.Yearly)
+}
+
+pub fn every_weekday_helper_test() {
+  let result = era.every_weekday([era.Monday, era.Wednesday, era.Friday], era.time(9, 0))
+  result.pattern |> should.equal(era.EveryWeekday([era.Monday, era.Wednesday, era.Friday]))
+  result.time.hour |> should.equal(Some(9))
+}
+
+pub fn every_single_weekday_test() {
+  let result = era.every(era.Tuesday, era.time_pm(2, 0))
+  result.pattern |> should.equal(era.EveryWeekday([era.Tuesday]))
+  result.time.hour |> should.equal(Some(14))
+}
+
+pub fn every_n_days_test() {
+  let result = era.every_n_days(3, era.time(10, 0))
+  result.pattern |> should.equal(era.EveryNDays(3))
+}
+
+pub fn every_n_weeks_test() {
+  let result = era.every_n_weeks(2, era.time(9, 0))
+  result.pattern |> should.equal(era.EveryNWeeks(2))
+}
+
+pub fn every_n_months_test() {
+  let result = era.every_n_months(3, era.time(15, 0))
+  result.pattern |> should.equal(era.EveryNMonths(3))
+}
+
+// ----------------------------------------------------------------------------
+// Weekday Constants
+// ----------------------------------------------------------------------------
+
+pub fn weekdays_constant_test() {
+  era.weekdays |> should.equal([era.Monday, era.Tuesday, era.Wednesday, era.Thursday, era.Friday])
+}
+
+pub fn weekend_constant_test() {
+  era.weekend |> should.equal([era.Saturday, era.Sunday])
+}
+
+pub fn all_days_constant_test() {
+  era.all_days
+  |> should.equal([era.Monday, era.Tuesday, era.Wednesday, era.Thursday, era.Friday, era.Saturday, era.Sunday])
+}
+
+// ----------------------------------------------------------------------------
+// Inspection Functions
+// ----------------------------------------------------------------------------
+
+pub fn is_single_point_test() {
+  let single = era.SinglePoint(era.time(9, 0))
+  let range = era.Range(era.range(era.time(9, 0), era.time(17, 0)))
+
+  era.is_single_point(single) |> should.be_true
+  era.is_single_point(range) |> should.be_false
+}
+
+pub fn is_multiple_points_test() {
+  let multi = era.MultiplePoints([era.time(9, 0), era.time(14, 0)])
+  let single = era.SinglePoint(era.time(9, 0))
+
+  era.is_multiple_points(multi) |> should.be_true
+  era.is_multiple_points(single) |> should.be_false
+}
+
+pub fn is_range_test() {
+  let range = era.Range(era.range(era.time(9, 0), era.time(17, 0)))
+  let single = era.SinglePoint(era.time(9, 0))
+
+  era.is_range(range) |> should.be_true
+  era.is_range(single) |> should.be_false
+}
+
+pub fn is_multiple_ranges_test() {
+  let r1 = era.range(era.time(9, 0), era.time(12, 0))
+  let r2 = era.range(era.time(13, 0), era.time(17, 0))
+  let multi_ranges = era.MultipleRanges([r1, r2])
+  let single = era.SinglePoint(era.time(9, 0))
+
+  era.is_multiple_ranges(multi_ranges) |> should.be_true
+  era.is_multiple_ranges(single) |> should.be_false
+}
+
+pub fn is_recurring_test() {
+  let recurring = era.Recurring(era.daily(era.time(9, 0)))
+  let single = era.SinglePoint(era.time(9, 0))
+
+  era.is_recurring(recurring) |> should.be_true
+  era.is_recurring(single) |> should.be_false
+}
+
+// ----------------------------------------------------------------------------
+// Extraction Functions
+// ----------------------------------------------------------------------------
+
+pub fn to_single_point_test() {
+  let dt = era.time(9, 0)
+  let parsed = era.SinglePoint(dt)
+
+  case era.to_single_point(parsed) {
+    Ok(result) -> result |> should.equal(dt)
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn to_single_point_error_test() {
+  let parsed = era.Range(era.range(era.time(9, 0), era.time(17, 0)))
+  era.to_single_point(parsed) |> should.be_error
+}
+
+pub fn to_multiple_points_test() {
+  let dates = [era.time(9, 0), era.time(14, 0)]
+  let parsed = era.MultiplePoints(dates)
+
+  case era.to_multiple_points(parsed) {
+    Ok(result) -> result |> should.equal(dates)
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn to_range_test() {
+  let tr = era.range(era.time(9, 0), era.time(17, 0))
+  let parsed = era.Range(tr)
+
+  case era.to_range(parsed) {
+    Ok(result) -> result |> should.equal(tr)
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn to_multiple_ranges_test() {
+  let r1 = era.range(era.time(9, 0), era.time(12, 0))
+  let r2 = era.range(era.time(13, 0), era.time(17, 0))
+  let ranges = [r1, r2]
+  let parsed = era.MultipleRanges(ranges)
+
+  case era.to_multiple_ranges(parsed) {
+    Ok(result) -> result |> should.equal(ranges)
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn to_recurring_test() {
+  let recurring_event = era.daily(era.time(9, 0))
+  let parsed = era.Recurring(recurring_event)
+
+  case era.to_recurring(parsed) {
+    Ok(result) -> result |> should.equal(recurring_event)
+    Error(_) -> should.fail()
+  }
+}
+
+// ----------------------------------------------------------------------------
+// String Conversion Functions
+// ----------------------------------------------------------------------------
+
+pub fn weekday_to_string_test() {
+  era.weekday_to_string(era.Monday) |> should.equal("Monday")
+  era.weekday_to_string(era.Friday) |> should.equal("Friday")
+  era.weekday_to_string(era.Sunday) |> should.equal("Sunday")
+}
+
+pub fn relative_to_string_test() {
+  era.relative_to_string(era.Tomorrow) |> should.equal("Tomorrow")
+  era.relative_to_string(era.Yesterday) |> should.equal("Yesterday")
+  era.relative_to_string(era.NextWeekday(era.Monday)) |> should.equal("Next Monday")
+  era.relative_to_string(era.DaysFromNow(3)) |> should.equal("in 3 days")
+  era.relative_to_string(era.HoursAgo(2)) |> should.equal("2 hours ago")
+}
+
+pub fn recurrence_to_string_test() {
+  era.recurrence_to_string(era.Daily) |> should.equal("Daily")
+  era.recurrence_to_string(era.Weekly) |> should.equal("Weekly")
+  era.recurrence_to_string(era.EveryWeekday([era.Monday, era.Wednesday]))
+    |> should.equal("Every Monday, Wednesday")
+  era.recurrence_to_string(era.EveryNDays(3)) |> should.equal("Every 3 days")
+}
+
+pub fn format_datetime_test() {
+  let result = era.format_datetime(era.time(14, 30))
+  result |> should.equal("Today at 14:30")
+}
+
+pub fn format_datetime_tomorrow_test() {
+  let result = era.format_datetime(era.tomorrow_at(17, 0))
+  result |> should.equal("Tomorrow at 17:00")
+}
+
+pub fn format_range_test() {
+  let tr = era.range(era.time(9, 0), era.time(17, 0))
+  let result = era.format_range(tr)
+  result |> should.equal("Today at 9:00 to Today at 17:00")
+}
+
+pub fn format_recurring_event_test() {
+  let recurring = era.daily(era.time(9, 0))
+  let result = era.format_recurring_event(recurring)
+  result |> should.equal("Daily at 9:00")
+}
+
+// ----------------------------------------------------------------------------
+// Describe Function
+// ----------------------------------------------------------------------------
+
+pub fn describe_single_point_test() {
+  let parsed = era.SinglePoint(era.time(9, 0))
+  era.describe(parsed) |> should.equal("single point in time")
+}
+
+pub fn describe_multiple_points_test() {
+  let parsed = era.MultiplePoints([era.time(9, 0), era.time(14, 0)])
+  era.describe(parsed) |> should.equal("2 points in time")
+}
+
+pub fn describe_range_test() {
+  let parsed = era.Range(era.range(era.time(9, 0), era.time(17, 0)))
+  era.describe(parsed) |> should.equal("time range")
+}
+
+pub fn describe_recurring_test() {
+  let parsed = era.Recurring(era.daily(era.time(9, 0)))
+  era.describe(parsed) |> should.equal("recurring event")
+}
