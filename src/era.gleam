@@ -958,6 +958,14 @@ pub fn is_range(parsed: ParsedDate) -> Bool {
   }
 }
 
+/// Check if a ParsedDate represents multiple time ranges
+pub fn is_multiple_ranges(parsed: ParsedDate) -> Bool {
+  case parsed {
+    MultipleRanges(_) -> True
+    _ -> False
+  }
+}
+
 /// Check if a ParsedDate represents a recurring event
 pub fn is_recurring(parsed: ParsedDate) -> Bool {
   case parsed {
@@ -993,6 +1001,22 @@ pub fn to_range(parsed: ParsedDate) -> Result(TimeRange, String) {
   case parsed {
     Range(tr) -> Ok(tr)
     _ -> Error("Not a time range")
+  }
+}
+
+/// Extract the list of TimeRanges if ParsedDate is MultipleRanges
+///
+/// ## Examples
+/// ```gleam
+/// to_multiple_ranges(MultipleRanges([r1, r2]))  // Ok([r1, r2])
+/// to_multiple_ranges(SinglePoint(..))           // Error("Not multiple ranges")
+/// ```
+pub fn to_multiple_ranges(
+  parsed: ParsedDate,
+) -> Result(List(TimeRange), String) {
+  case parsed {
+    MultipleRanges(ranges) -> Ok(ranges)
+    _ -> Error("Not multiple time ranges")
   }
 }
 
