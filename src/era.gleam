@@ -2285,6 +2285,20 @@ pub fn format_range(tr: TimeRange) -> String {
   format_datetime(tr.start) <> " to " <> format_datetime(tr.end)
 }
 
+/// Format a RecurringEvent as a human-readable string.
+///
+/// ## Examples
+/// ```gleam
+/// format_recurring_event(daily(time(9, 0)))
+/// // => "Daily at 9:00"
+///
+/// format_recurring_event(every(Monday, time_pm(2, 30)))
+/// // => "Every Monday at 14:30"
+/// ```
+pub fn format_recurring_event(re: RecurringEvent) -> String {
+  format_recurring_internal(re)
+}
+
 /// Format a ParsedDate as a human-readable string.
 ///
 /// This is a convenience function that formats any ParsedDate variant.
@@ -2307,7 +2321,7 @@ pub fn format(parsed: ParsedDate) -> String {
     MultipleRanges(ranges) ->
       list.map(ranges, format_range)
       |> string.join("; ")
-    Recurring(re) -> format_recurring(re)
+    Recurring(re) -> format_recurring_internal(re)
   }
 }
 
@@ -2373,7 +2387,7 @@ fn format_relative(rel: RelativeTime) -> String {
   }
 }
 
-fn format_recurring(re: RecurringEvent) -> String {
+fn format_recurring_internal(re: RecurringEvent) -> String {
   let pattern_str = case re.pattern {
     Daily -> "Daily"
     Weekly -> "Weekly"
