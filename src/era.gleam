@@ -42,23 +42,32 @@
 ////
 //// ## Building DateTime Values
 ////
-//// Instead of constructing DateTime manually, use the helper functions:
+//// Instead of constructing DateTime manually, use the ergonomic helper functions:
 ////
 //// ```gleam
 //// import era
 ////
-//// // Just a time
-//// era.time(14, 30)  // Today at 2:30pm
+//// // Times
+//// era.time(14, 30)      // Today at 2:30pm (24-hour)
+//// era.time_pm(2, 30)    // Today at 2:30pm (12-hour)
+//// era.noon()            // Today at 12:00pm
 ////
-//// // Just a date
+//// // Dates
 //// era.date(2024, 12, 25)  // Christmas 2024
 ////
 //// // Full datetime
 //// era.datetime(2024, 12, 25, 10, 30)
 ////
-//// // Relative expressions
-//// era.relative(era.Tomorrow)
-//// era.relative_time(era.Tomorrow, 14, 30)  // Tomorrow at 2:30pm
+//// // Relative times
+//// era.tomorrow()                  // Tomorrow
+//// era.tomorrow_at_pm(5, 0)        // Tomorrow at 5pm
+//// era.next_monday()               // Next Monday
+//// era.next_monday_at(9, 0)        // Next Monday at 9am
+//// era.in_days(3)                  // 3 days from now
+////
+//// // Recurring events
+//// era.daily(era.time(9, 0))       // Every day at 9am
+//// era.every(Monday, era.time_pm(2, 0))  // Every Monday at 2pm
 //// ```
 ////
 //// ## Working with Results
