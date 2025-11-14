@@ -2362,6 +2362,63 @@ pub fn format_recurring_event(re: RecurringEvent) -> String {
   format_recurring_internal(re)
 }
 
+/// Format a Weekday as a string.
+///
+/// Useful for debugging and display purposes.
+///
+/// ## Examples
+/// ```gleam
+/// weekday_to_string(Monday)     // => "Monday"
+/// weekday_to_string(Saturday)   // => "Saturday"
+/// ```
+pub fn weekday_to_string(day: Weekday) -> String {
+  format_weekday(day)
+}
+
+/// Format a RelativeTime as a human-readable string.
+///
+/// Useful for debugging and display purposes.
+///
+/// ## Examples
+/// ```gleam
+/// relative_to_string(Tomorrow)           // => "Tomorrow"
+/// relative_to_string(NextWeekday(Monday)) // => "Next Monday"
+/// relative_to_string(DaysFromNow(3))     // => "in 3 days"
+/// ```
+pub fn relative_to_string(rel: RelativeTime) -> String {
+  format_relative(rel)
+}
+
+/// Format a Recurrence pattern as a human-readable string.
+///
+/// Useful for debugging and display purposes.
+///
+/// ## Examples
+/// ```gleam
+/// recurrence_to_string(Daily)                    // => "Daily"
+/// recurrence_to_string(EveryWeekday([Mon, Wed])) // => "Every Monday, Wednesday"
+/// recurrence_to_string(EveryNDays(3))           // => "Every 3 days"
+/// ```
+pub fn recurrence_to_string(pattern: Recurrence) -> String {
+  case pattern {
+    Daily -> "Daily"
+    Weekly -> "Weekly"
+    Monthly -> "Monthly"
+    Yearly -> "Yearly"
+    EveryWeekday(days) ->
+      "Every "
+      <> {
+        list.map(days, format_weekday)
+        |> string.join(", ")
+      }
+    EveryNDays(n) -> "Every " <> int.to_string(n) <> " days"
+    EveryNWeeks(n) -> "Every " <> int.to_string(n) <> " weeks"
+    EveryNMonths(n) -> "Every " <> int.to_string(n) <> " months"
+    NthWeekdayOfMonth(n, day) ->
+      int.to_string(n) <> "th " <> format_weekday(day) <> " of each month"
+  }
+}
+
 /// Format a ParsedDate as a human-readable string.
 ///
 /// This is a convenience function that formats any ParsedDate variant.
