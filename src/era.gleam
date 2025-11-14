@@ -287,6 +287,36 @@ pub type ParsedDate {
 }
 
 // ============================================================================
+// COMMON CONSTANTS - Useful predefined lists
+// ============================================================================
+
+/// All weekdays (Monday through Friday)
+///
+/// ## Examples
+/// ```gleam
+/// every_weekday(weekdays, time(9, 0))  // Every weekday at 9am
+/// ```
+pub const weekdays: List(Weekday) = [Monday, Tuesday, Wednesday, Thursday, Friday]
+
+/// Weekend days (Saturday and Sunday)
+///
+/// ## Examples
+/// ```gleam
+/// every_weekday(weekend, time(10, 0))  // Every weekend day at 10am
+/// ```
+pub const weekend: List(Weekday) = [Saturday, Sunday]
+
+/// All days of the week
+///
+/// ## Examples
+/// ```gleam
+/// every_weekday(all_days, time(8, 0))  // Every single day at 8am
+/// ```
+pub const all_days: List(Weekday) = [
+  Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday,
+]
+
+// ============================================================================
 // HELPER FUNCTIONS - Convenience builders and utilities
 // ============================================================================
 
