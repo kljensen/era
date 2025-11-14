@@ -281,7 +281,7 @@ pub type ParsedDate {
 // HELPER FUNCTIONS - Convenience builders and utilities
 // ============================================================================
 
-/// Creates a DateTime representing just a time (hour and optional minute)
+/// Creates a DateTime representing just a time (24-hour format)
 /// Defaults to today with the specified time.
 ///
 /// ## Examples
@@ -299,6 +299,36 @@ pub fn time(hour: Int, minute: Int) -> DateTime {
     second: Some(0),
     relative: Some(Today),
   )
+}
+
+/// Creates a DateTime for a time in the PM (12-hour format)
+///
+/// ## Examples
+/// ```gleam
+/// time_pm(5, 30)  // Today at 5:30pm (17:30)
+/// time_pm(12, 0)  // Today at noon (12:00)
+/// ```
+pub fn time_pm(hour: Int, minute: Int) -> DateTime {
+  let hour_24 = case hour {
+    12 -> 12
+    h -> h + 12
+  }
+  time(hour_24, minute)
+}
+
+/// Creates a DateTime for a time in the AM (12-hour format)
+///
+/// ## Examples
+/// ```gleam
+/// time_am(9, 30)   // Today at 9:30am
+/// time_am(12, 0)   // Today at midnight (00:00)
+/// ```
+pub fn time_am(hour: Int, minute: Int) -> DateTime {
+  let hour_24 = case hour {
+    12 -> 0
+    h -> h
+  }
+  time(hour_24, minute)
 }
 
 /// Creates a DateTime representing a date (year, month, day)
@@ -347,6 +377,9 @@ pub fn datetime(
 
 /// Creates a DateTime representing a relative time expression
 ///
+/// This is the low-level function. Consider using the specific helpers like
+/// `tomorrow()`, `next_monday()`, `in_days(3)` instead for better ergonomics.
+///
 /// ## Examples
 /// ```gleam
 /// relative(Tomorrow)              // Tomorrow (unspecified time)
@@ -366,6 +399,9 @@ pub fn relative(rel: RelativeTime) -> DateTime {
 
 /// Creates a DateTime with a relative time and specific time of day
 ///
+/// This is the low-level function. Consider using `tomorrow_at()`, `next_monday_at()`
+/// instead for common patterns.
+///
 /// ## Examples
 /// ```gleam
 /// relative_time(Tomorrow, 14, 30)  // Tomorrow at 2:30pm
@@ -383,6 +419,320 @@ pub fn relative_time(rel: RelativeTime, hour: Int, minute: Int) -> DateTime {
   )
 }
 
+// ============================================================================
+// SIMPLE RELATIVE TIME HELPERS - Ergonomic functions for common cases
+// ============================================================================
+
+/// The current moment
+pub fn now() -> DateTime {
+  relative(Now)
+}
+
+/// Today (any time during the current day)
+pub fn today() -> DateTime {
+  relative(Today)
+}
+
+/// Tomorrow (no specific time)
+pub fn tomorrow() -> DateTime {
+  relative(Tomorrow)
+}
+
+/// Yesterday (no specific time)
+pub fn yesterday() -> DateTime {
+  relative(Yesterday)
+}
+
+/// Tomorrow at a specific time (24-hour format)
+///
+/// ## Examples
+/// ```gleam
+/// tomorrow_at(14, 30)  // Tomorrow at 2:30pm
+/// ```
+pub fn tomorrow_at(hour: Int, minute: Int) -> DateTime {
+  relative_time(Tomorrow, hour, minute)
+}
+
+/// Tomorrow at a PM time (12-hour format)
+///
+/// ## Examples
+/// ```gleam
+/// tomorrow_at_pm(5, 30)  // Tomorrow at 5:30pm
+/// ```
+pub fn tomorrow_at_pm(hour: Int, minute: Int) -> DateTime {
+  let hour_24 = case hour {
+    12 -> 12
+    h -> h + 12
+  }
+  relative_time(Tomorrow, hour_24, minute)
+}
+
+/// Tomorrow at an AM time (12-hour format)
+///
+/// ## Examples
+/// ```gleam
+/// tomorrow_at_am(9, 30)  // Tomorrow at 9:30am
+/// ```
+pub fn tomorrow_at_am(hour: Int, minute: Int) -> DateTime {
+  let hour_24 = case hour {
+    12 -> 0
+    h -> h
+  }
+  relative_time(Tomorrow, hour_24, minute)
+}
+
+// ============================================================================
+// WEEKDAY HELPERS - Next/last occurrences of specific weekdays
+// ============================================================================
+
+/// Next occurrence of a specific weekday
+///
+/// ## Examples
+/// ```gleam
+/// next(Monday)     // Next Monday
+/// next(Friday)     // Next Friday
+/// ```
+pub fn next(weekday: Weekday) -> DateTime {
+  relative(NextWeekday(weekday))
+}
+
+/// Next occurrence of a weekday at a specific time
+///
+/// ## Examples
+/// ```gleam
+/// next_at(Monday, 9, 0)     // Next Monday at 9am
+/// next_at(Friday, 17, 30)   // Next Friday at 5:30pm
+/// ```
+pub fn next_at(weekday: Weekday, hour: Int, minute: Int) -> DateTime {
+  relative_time(NextWeekday(weekday), hour, minute)
+}
+
+/// Previous occurrence of a specific weekday
+///
+/// ## Examples
+/// ```gleam
+/// last(Monday)     // Last Monday
+/// last(Friday)     // Last Friday
+/// ```
+pub fn last(weekday: Weekday) -> DateTime {
+  relative(LastWeekday(weekday))
+}
+
+/// Previous occurrence of a weekday at a specific time
+///
+/// ## Examples
+/// ```gleam
+/// last_at(Monday, 9, 0)     // Last Monday at 9am
+/// ```
+pub fn last_at(weekday: Weekday, hour: Int, minute: Int) -> DateTime {
+  relative_time(LastWeekday(weekday), hour, minute)
+}
+
+// Specific weekday helpers for discoverability
+/// Next Monday
+pub fn next_monday() -> DateTime {
+  next(Monday)
+}
+
+/// Next Monday at a specific time
+pub fn next_monday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Monday, hour, minute)
+}
+
+/// Next Tuesday
+pub fn next_tuesday() -> DateTime {
+  next(Tuesday)
+}
+
+/// Next Tuesday at a specific time
+pub fn next_tuesday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Tuesday, hour, minute)
+}
+
+/// Next Wednesday
+pub fn next_wednesday() -> DateTime {
+  next(Wednesday)
+}
+
+/// Next Wednesday at a specific time
+pub fn next_wednesday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Wednesday, hour, minute)
+}
+
+/// Next Thursday
+pub fn next_thursday() -> DateTime {
+  next(Thursday)
+}
+
+/// Next Thursday at a specific time
+pub fn next_thursday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Thursday, hour, minute)
+}
+
+/// Next Friday
+pub fn next_friday() -> DateTime {
+  next(Friday)
+}
+
+/// Next Friday at a specific time
+pub fn next_friday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Friday, hour, minute)
+}
+
+/// Next Saturday
+pub fn next_saturday() -> DateTime {
+  next(Saturday)
+}
+
+/// Next Saturday at a specific time
+pub fn next_saturday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Saturday, hour, minute)
+}
+
+/// Next Sunday
+pub fn next_sunday() -> DateTime {
+  next(Sunday)
+}
+
+/// Next Sunday at a specific time
+pub fn next_sunday_at(hour: Int, minute: Int) -> DateTime {
+  next_at(Sunday, hour, minute)
+}
+
+// ============================================================================
+// OFFSET HELPERS - Relative time offsets (past and future)
+// ============================================================================
+
+/// N minutes in the future
+///
+/// ## Examples
+/// ```gleam
+/// in_minutes(5)   // 5 minutes from now
+/// in_minutes(30)  // 30 minutes from now
+/// ```
+pub fn in_minutes(n: Int) -> DateTime {
+  relative(MinutesFromNow(n))
+}
+
+/// N minutes in the past
+///
+/// ## Examples
+/// ```gleam
+/// ago_minutes(5)   // 5 minutes ago
+/// ago_minutes(30)  // 30 minutes ago
+/// ```
+pub fn ago_minutes(n: Int) -> DateTime {
+  relative(MinutesAgo(n))
+}
+
+/// N hours in the future
+///
+/// ## Examples
+/// ```gleam
+/// in_hours(2)   // 2 hours from now
+/// in_hours(24)  // 24 hours from now
+/// ```
+pub fn in_hours(n: Int) -> DateTime {
+  relative(HoursFromNow(n))
+}
+
+/// N hours in the past
+///
+/// ## Examples
+/// ```gleam
+/// ago_hours(2)   // 2 hours ago
+/// ago_hours(24)  // 24 hours ago
+/// ```
+pub fn ago_hours(n: Int) -> DateTime {
+  relative(HoursAgo(n))
+}
+
+/// N days in the future
+///
+/// ## Examples
+/// ```gleam
+/// in_days(3)   // 3 days from now
+/// in_days(7)   // 1 week from now
+/// ```
+pub fn in_days(n: Int) -> DateTime {
+  relative(DaysFromNow(n))
+}
+
+/// N days in the past
+///
+/// ## Examples
+/// ```gleam
+/// ago_days(3)   // 3 days ago
+/// ago_days(7)   // 1 week ago
+/// ```
+pub fn ago_days(n: Int) -> DateTime {
+  relative(DaysAgo(n))
+}
+
+/// N weeks in the future
+///
+/// ## Examples
+/// ```gleam
+/// in_weeks(2)   // 2 weeks from now
+/// in_weeks(4)   // 4 weeks from now
+/// ```
+pub fn in_weeks(n: Int) -> DateTime {
+  relative(WeeksFromNow(n))
+}
+
+/// N weeks in the past
+///
+/// ## Examples
+/// ```gleam
+/// ago_weeks(2)   // 2 weeks ago
+/// ```
+pub fn ago_weeks(n: Int) -> DateTime {
+  relative(WeeksAgo(n))
+}
+
+/// N months in the future
+///
+/// ## Examples
+/// ```gleam
+/// in_months(3)   // 3 months from now
+/// in_months(6)   // 6 months from now
+/// ```
+pub fn in_months(n: Int) -> DateTime {
+  relative(MonthsFromNow(n))
+}
+
+/// N months in the past
+///
+/// ## Examples
+/// ```gleam
+/// ago_months(3)   // 3 months ago
+/// ```
+pub fn ago_months(n: Int) -> DateTime {
+  relative(MonthsAgo(n))
+}
+
+/// N years in the future
+///
+/// ## Examples
+/// ```gleam
+/// in_years(1)   // 1 year from now
+/// in_years(5)   // 5 years from now
+/// ```
+pub fn in_years(n: Int) -> DateTime {
+  relative(YearsFromNow(n))
+}
+
+/// N years in the past
+///
+/// ## Examples
+/// ```gleam
+/// ago_years(1)   // 1 year ago
+/// ago_years(10)  // 10 years ago
+/// ```
+pub fn ago_years(n: Int) -> DateTime {
+  relative(YearsAgo(n))
+}
+
 /// Creates a TimeRange from two DateTimes
 ///
 /// ## Examples
@@ -391,6 +741,26 @@ pub fn relative_time(rel: RelativeTime, hour: Int, minute: Int) -> DateTime {
 /// ```
 pub fn range(start: DateTime, end: DateTime) -> TimeRange {
   TimeRange(start: start, end: end)
+}
+
+/// Noon (12:00pm) today
+///
+/// ## Examples
+/// ```gleam
+/// noon()  // Today at 12:00pm
+/// ```
+pub fn noon() -> DateTime {
+  time(12, 0)
+}
+
+/// Midnight (00:00) today
+///
+/// ## Examples
+/// ```gleam
+/// midnight()  // Today at midnight (00:00)
+/// ```
+pub fn midnight() -> DateTime {
+  time(0, 0)
 }
 
 /// Check if a ParsedDate represents a single point in time
