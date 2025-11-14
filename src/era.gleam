@@ -1,12 +1,91 @@
-// Era: A rigorous natural date/time parser using parser combinators
-//
-// This library parses natural language date/time expressions and returns
-// strongly-typed results representing:
-// - Single points in time: "next Tuesday at 5pm"
-// - Multiple points in time: "Tuesday and Thursday at 5pm"
-// - Time ranges: "Tuesday 4-5pm"
-// - Recurrent events: "every Tuesday at 5pm"
-// - Recurrent events with multiple days: "every Monday and Wednesday at 5pm"
+//// Era: A rigorous natural date/time parser for Gleam
+////
+//// Era parses natural language date and time expressions into strongly-typed results.
+//// It uses parser combinators (not regexes) to handle a wide variety of temporal expressions,
+//// from simple times like "5pm" to complex recurring patterns like "every Tuesday at 3pm".
+////
+//// ## Features
+////
+//// - **Parse natural language**: "tomorrow at 5pm", "next Tuesday", "in 3 days"
+//// - **Multiple expression types**: single points, ranges, recurring events
+//// - **Handles text "in the wild"**: Extracts dates from surrounding text
+//// - **Type-safe results**: All parsing results are strongly typed
+//// - **Ergonomic API**: Helper functions for common operations
+//// - **Comprehensive formatting**: Convert results back to readable text
+////
+//// ## Quick Start
+////
+//// ```gleam
+//// import era
+////
+//// // Parse a simple time
+//// era.parse("5pm")
+//// // => Ok(SinglePoint(DateTime { hour: Some(17), .. }))
+////
+//// // Parse multiple times
+//// era.parse("Tuesday and Thursday at 3pm")
+//// // => Ok(MultiplePoints([..]))
+////
+//// // Parse a range
+//// era.parse("Monday 9am-5pm")
+//// // => Ok(Range(TimeRange { .. }))
+////
+//// // Parse recurring
+//// era.parse("every Tuesday at 2pm")
+//// // => Ok(Recurring(RecurringEvent { .. }))
+////
+//// // Format back to text
+//// let assert Ok(result) = era.parse("tomorrow at 5pm")
+//// era.format(result)
+//// // => "Tomorrow at 17:00"
+//// ```
+////
+//// ## Building DateTime Values
+////
+//// Instead of constructing DateTime manually, use the helper functions:
+////
+//// ```gleam
+//// import era
+////
+//// // Just a time
+//// era.time(14, 30)  // Today at 2:30pm
+////
+//// // Just a date
+//// era.date(2024, 12, 25)  // Christmas 2024
+////
+//// // Full datetime
+//// era.datetime(2024, 12, 25, 10, 30)
+////
+//// // Relative expressions
+//// era.relative(era.Tomorrow)
+//// era.relative_time(era.Tomorrow, 14, 30)  // Tomorrow at 2:30pm
+//// ```
+////
+//// ## Working with Results
+////
+//// Use the inspection functions to check what was parsed:
+////
+//// ```gleam
+//// let assert Ok(result) = era.parse("5pm")
+////
+//// era.is_single_point(result)  // True
+//// era.describe(result)  // "single point in time"
+////
+//// // Extract the DateTime
+//// let assert Ok(dt) = era.to_single_point(result)
+//// ```
+////
+//// ## Validation
+////
+//// Validate DateTime values to ensure they have reasonable values:
+////
+//// ```gleam
+//// let dt = era.time(14, 30)
+//// era.validate(dt)  // Ok(DateTime { .. })
+////
+//// let bad = era.time(25, 0)  // Invalid hour
+//// era.validate(bad)  // Error("Hour must be 0-23, got 25")
+//// ```
 
 import gleam/int
 import gleam/list
@@ -20,7 +99,16 @@ import nibble/lexer
 // CORE TYPE SYSTEM
 // ============================================================================
 
-/// Represents a specific point in time
+/// Represents a specific point in time, with optional components.
+///
+/// A DateTime can represent various levels of precision:
+/// - Just a time: `DateTime { hour: Some(14), minute: Some(30), .. }`
+/// - Just a date: `DateTime { year: Some(2024), month: Some(12), day: Some(25), .. }`
+/// - Full datetime: All fields specified
+/// - Relative time: `DateTime { relative: Some(Tomorrow), .. }`
+///
+/// Use the helper functions `time()`, `date()`, `datetime()`, and `relative()`
+/// to create DateTime values more ergonomically.
 pub type DateTime {
   DateTime(
     year: Option(Int),
@@ -29,38 +117,58 @@ pub type DateTime {
     hour: Option(Int),
     minute: Option(Int),
     second: Option(Int),
-    // For relative dates, we need to know the relationship to "now"
+    /// For relative dates like "tomorrow" or "next Tuesday"
     relative: Option(RelativeTime),
   )
 }
 
-/// Relative time expressions
+/// Expressions for relative time, like "tomorrow", "next week", or "3 days ago".
+///
+/// These are used when the date/time is specified relative to the current moment
+/// rather than as an absolute date. The actual calendar date is determined at
+/// runtime based on when the expression is evaluated.
 pub type RelativeTime {
+  /// The current moment
   Now
+  /// Today (any time during the current day)
   Today
+  /// The day after today
   Tomorrow
+  /// The day before today
   Yesterday
-  // Relative offsets (fine-grained)
+  /// N minutes in the past (e.g., "5 minutes ago")
   MinutesAgo(Int)
+  /// N minutes in the future (e.g., "in 10 minutes")
   MinutesFromNow(Int)
+  /// N hours in the past
   HoursAgo(Int)
+  /// N hours in the future
   HoursFromNow(Int)
-  // Relative offsets (coarse-grained)
+  /// N days in the past
   DaysAgo(Int)
+  /// N days in the future
   DaysFromNow(Int)
+  /// N weeks in the past
   WeeksAgo(Int)
+  /// N weeks in the future
   WeeksFromNow(Int)
+  /// N months in the past
   MonthsAgo(Int)
+  /// N months in the future
   MonthsFromNow(Int)
+  /// N years in the past
   YearsAgo(Int)
+  /// N years in the future
   YearsFromNow(Int)
-  // Day of week relative
+  /// The next occurrence of a weekday (e.g., "next Monday")
   NextWeekday(Weekday)
+  /// The previous occurrence of a weekday (e.g., "last Friday")
   LastWeekday(Weekday)
+  /// The nearest occurrence of a weekday in the current week
   ThisWeekday(Weekday)
 }
 
-/// Days of the week
+/// Days of the week (Monday through Sunday)
 pub type Weekday {
   Monday
   Tuesday
@@ -71,59 +179,425 @@ pub type Weekday {
   Sunday
 }
 
-/// Time of day descriptors
+/// Common time-of-day descriptors like "morning" or "noon".
+///
+/// These are approximate times that get mapped to specific hours:
+/// - Morning: ~6am
+/// - Afternoon: ~3pm
+/// - Evening: ~8pm
+/// - Night: ~10pm
+/// - Noon: exactly 12pm
+/// - Midnight: exactly 12am
 pub type TimeOfDay {
-  Morning    // ~6am
-  Afternoon  // ~3pm
-  Evening    // ~8pm
-  Night      // ~10pm
-  Noon       // 12pm
-  Midnight   // 12am
+  Morning
+  Afternoon
+  Evening
+  Night
+  Noon
+  Midnight
 }
 
-/// A time range has a start and end
+/// A continuous period of time with a start and end point.
+///
+/// Both the start and end are DateTime values, which can have any
+/// level of precision (date, time, or both).
+///
+/// ## Examples
+/// - "9am to 5pm today"
+/// - "Monday through Friday"
+/// - "December 1-15, 2024"
 pub type TimeRange {
   TimeRange(start: DateTime, end: DateTime)
 }
 
-/// Recurrence patterns
+/// Patterns for recurring events (daily, weekly, specific weekdays, etc.)
+///
+/// These describe how often an event repeats, without specifying the
+/// actual time. The time is specified separately in a RecurringEvent.
 pub type Recurrence {
-  // Simple patterns
+  /// Every day
   Daily
+  /// Every week (same day of week)
   Weekly
+  /// Every month (same day of month)
   Monthly
+  /// Every year (same date)
   Yearly
-  // Specific day patterns
+  /// Specific weekdays each week (e.g., "every Monday and Wednesday")
   EveryWeekday(weekdays: List(Weekday))
-  // Interval patterns
+  /// Every N days
   EveryNDays(n: Int)
+  /// Every N weeks
   EveryNWeeks(n: Int)
+  /// Every N months
   EveryNMonths(n: Int)
-  // Ordinal patterns like "2nd Tuesday of each month"
+  /// Nth occurrence of a weekday each month (e.g., "2nd Tuesday of each month")
   NthWeekdayOfMonth(n: Int, weekday: Weekday)
 }
 
-/// A recurring event combines a recurrence pattern with a time/date template
+/// A recurring event: a pattern combined with a time template.
+///
+/// This represents events that happen repeatedly, like "every Tuesday at 3pm"
+/// or "daily at 9am". The `pattern` describes when it repeats, the `time`
+/// describes what time, and the optional `until` date specifies when to stop.
+///
+/// ## Examples
+/// ```gleam
+/// RecurringEvent {
+///   pattern: EveryWeekday([Tuesday, Thursday]),
+///   time: DateTime { hour: Some(15), minute: Some(0), .. },
+///   until: None,
+/// }
+/// // "Every Tuesday and Thursday at 3pm"
+/// ```
 pub type RecurringEvent {
   RecurringEvent(
+    /// How often the event repeats
     pattern: Recurrence,
+    /// What time the event occurs (template for each occurrence)
     time: DateTime,
-    until: Option(DateTime),  // Optional end date
+    /// Optional end date for the recurrence
+    until: Option(DateTime),
   )
 }
 
 /// The main result type: what we parsed from the input
+///
+/// This represents the different types of temporal expressions that can be parsed:
+/// - `SinglePoint`: A single moment in time, like "tomorrow at 5pm"
+/// - `MultiplePoints`: Multiple discrete moments, like "Tuesday and Thursday at 5pm"
+/// - `Range`: A continuous time period, like "Monday 9am-5pm"
+/// - `MultipleRanges`: Multiple time periods, like "Mon-Wed 9-5 and Fri 10-4"
+/// - `Recurring`: A repeating pattern, like "every Tuesday at 3pm"
 pub type ParsedDate {
-  // Single point in time
   SinglePoint(DateTime)
-  // Multiple discrete points
   MultiplePoints(List(DateTime))
-  // A continuous range
   Range(TimeRange)
-  // Multiple ranges
   MultipleRanges(List(TimeRange))
-  // A recurring event
   Recurring(RecurringEvent)
+}
+
+// ============================================================================
+// HELPER FUNCTIONS - Convenience builders and utilities
+// ============================================================================
+
+/// Creates a DateTime representing just a time (hour and optional minute)
+/// Defaults to today with the specified time.
+///
+/// ## Examples
+/// ```gleam
+/// time(14, 30)  // Today at 2:30pm
+/// time(9, 0)    // Today at 9:00am
+/// ```
+pub fn time(hour: Int, minute: Int) -> DateTime {
+  DateTime(
+    year: None,
+    month: None,
+    day: None,
+    hour: Some(hour),
+    minute: Some(minute),
+    second: Some(0),
+    relative: Some(Today),
+  )
+}
+
+/// Creates a DateTime representing a date (year, month, day)
+/// Time fields are left unspecified.
+///
+/// ## Examples
+/// ```gleam
+/// date(2024, 12, 25)  // Christmas 2024
+/// date(2025, 1, 1)    // New Year's Day 2025
+/// ```
+pub fn date(year: Int, month: Int, day: Int) -> DateTime {
+  DateTime(
+    year: Some(year),
+    month: Some(month),
+    day: Some(day),
+    hour: None,
+    minute: None,
+    second: None,
+    relative: None,
+  )
+}
+
+/// Creates a DateTime with both date and time
+///
+/// ## Examples
+/// ```gleam
+/// datetime(2024, 12, 25, 10, 30)  // Christmas 2024 at 10:30am
+/// ```
+pub fn datetime(
+  year: Int,
+  month: Int,
+  day: Int,
+  hour: Int,
+  minute: Int,
+) -> DateTime {
+  DateTime(
+    year: Some(year),
+    month: Some(month),
+    day: Some(day),
+    hour: Some(hour),
+    minute: Some(minute),
+    second: Some(0),
+    relative: None,
+  )
+}
+
+/// Creates a DateTime representing a relative time expression
+///
+/// ## Examples
+/// ```gleam
+/// relative(Tomorrow)              // Tomorrow (unspecified time)
+/// relative(NextWeekday(Monday))   // Next Monday
+/// ```
+pub fn relative(rel: RelativeTime) -> DateTime {
+  DateTime(
+    year: None,
+    month: None,
+    day: None,
+    hour: None,
+    minute: None,
+    second: None,
+    relative: Some(rel),
+  )
+}
+
+/// Creates a DateTime with a relative time and specific time of day
+///
+/// ## Examples
+/// ```gleam
+/// relative_time(Tomorrow, 14, 30)  // Tomorrow at 2:30pm
+/// relative_time(NextWeekday(Friday), 9, 0)  // Next Friday at 9am
+/// ```
+pub fn relative_time(rel: RelativeTime, hour: Int, minute: Int) -> DateTime {
+  DateTime(
+    year: None,
+    month: None,
+    day: None,
+    hour: Some(hour),
+    minute: Some(minute),
+    second: Some(0),
+    relative: Some(rel),
+  )
+}
+
+/// Creates a TimeRange from two DateTimes
+///
+/// ## Examples
+/// ```gleam
+/// range(time(9, 0), time(17, 0))  // 9am to 5pm today
+/// ```
+pub fn range(start: DateTime, end: DateTime) -> TimeRange {
+  TimeRange(start: start, end: end)
+}
+
+/// Check if a ParsedDate represents a single point in time
+///
+/// ## Examples
+/// ```gleam
+/// is_single_point(SinglePoint(time(9, 0)))  // True
+/// is_single_point(Range(..))                // False
+/// ```
+pub fn is_single_point(parsed: ParsedDate) -> Bool {
+  case parsed {
+    SinglePoint(_) -> True
+    _ -> False
+  }
+}
+
+/// Check if a ParsedDate represents multiple points in time
+pub fn is_multiple_points(parsed: ParsedDate) -> Bool {
+  case parsed {
+    MultiplePoints(_) -> True
+    _ -> False
+  }
+}
+
+/// Check if a ParsedDate represents a time range
+pub fn is_range(parsed: ParsedDate) -> Bool {
+  case parsed {
+    Range(_) -> True
+    _ -> False
+  }
+}
+
+/// Check if a ParsedDate represents a recurring event
+pub fn is_recurring(parsed: ParsedDate) -> Bool {
+  case parsed {
+    Recurring(_) -> True
+    _ -> False
+  }
+}
+
+/// Extract the DateTime if ParsedDate is a SinglePoint
+///
+/// ## Examples
+/// ```gleam
+/// to_single_point(SinglePoint(dt))  // Ok(dt)
+/// to_single_point(Range(..))        // Error("Not a single point")
+/// ```
+pub fn to_single_point(parsed: ParsedDate) -> Result(DateTime, String) {
+  case parsed {
+    SinglePoint(dt) -> Ok(dt)
+    _ -> Error("Not a single point in time")
+  }
+}
+
+/// Extract the list of DateTimes if ParsedDate is MultiplePoints
+pub fn to_multiple_points(parsed: ParsedDate) -> Result(List(DateTime), String) {
+  case parsed {
+    MultiplePoints(dates) -> Ok(dates)
+    _ -> Error("Not multiple points in time")
+  }
+}
+
+/// Extract the TimeRange if ParsedDate is a Range
+pub fn to_range(parsed: ParsedDate) -> Result(TimeRange, String) {
+  case parsed {
+    Range(tr) -> Ok(tr)
+    _ -> Error("Not a time range")
+  }
+}
+
+/// Extract the RecurringEvent if ParsedDate is Recurring
+pub fn to_recurring(parsed: ParsedDate) -> Result(RecurringEvent, String) {
+  case parsed {
+    Recurring(re) -> Ok(re)
+    _ -> Error("Not a recurring event")
+  }
+}
+
+/// Get a human-readable description of what type of ParsedDate this is
+///
+/// ## Examples
+/// ```gleam
+/// describe(SinglePoint(..))   // "single point in time"
+/// describe(Range(..))         // "time range"
+/// describe(Recurring(..))     // "recurring event"
+/// ```
+pub fn describe(parsed: ParsedDate) -> String {
+  case parsed {
+    SinglePoint(_) -> "single point in time"
+    MultiplePoints(dates) ->
+      int.to_string(list.length(dates)) <> " points in time"
+    Range(_) -> "time range"
+    MultipleRanges(ranges) ->
+      int.to_string(list.length(ranges)) <> " time ranges"
+    Recurring(_) -> "recurring event"
+  }
+}
+
+// ============================================================================
+// VALIDATION - Check DateTime values for validity
+// ============================================================================
+
+/// Validate that a DateTime has reasonable values.
+///
+/// Checks that numeric fields are within valid ranges:
+/// - Month: 1-12
+/// - Day: 1-31 (basic check, doesn't validate per-month limits)
+/// - Hour: 0-23
+/// - Minute: 0-59
+/// - Second: 0-59
+///
+/// Returns Ok(dt) if valid, or Error with a description of what's wrong.
+///
+/// ## Examples
+/// ```gleam
+/// validate(time(14, 30))  // Ok(DateTime { .. })
+/// validate(time(25, 0))   // Error("Hour must be 0-23, got 25")
+/// validate(date(2024, 13, 1))  // Error("Month must be 1-12, got 13")
+/// ```
+pub fn validate(dt: DateTime) -> Result(DateTime, String) {
+  case dt.month {
+    Some(m) if m < 1 || m > 12 ->
+      Error("Month must be 1-12, got " <> int.to_string(m))
+    _ -> Ok(dt)
+  }
+  |> result.then(fn(_) {
+    case dt.day {
+      Some(d) if d < 1 || d > 31 ->
+        Error("Day must be 1-31, got " <> int.to_string(d))
+      _ -> Ok(dt)
+    }
+  })
+  |> result.then(fn(_) {
+    case dt.hour {
+      Some(h) if h < 0 || h > 23 ->
+        Error("Hour must be 0-23, got " <> int.to_string(h))
+      _ -> Ok(dt)
+    }
+  })
+  |> result.then(fn(_) {
+    case dt.minute {
+      Some(m) if m < 0 || m > 59 ->
+        Error("Minute must be 0-59, got " <> int.to_string(m))
+      _ -> Ok(dt)
+    }
+  })
+  |> result.then(fn(_) {
+    case dt.second {
+      Some(s) if s < 0 || s > 59 ->
+        Error("Second must be 0-59, got " <> int.to_string(s))
+      _ -> Ok(dt)
+    }
+  })
+}
+
+/// Check if a DateTime has a time component (hour and/or minute)
+///
+/// ## Examples
+/// ```gleam
+/// has_time(time(14, 30))  // True
+/// has_time(date(2024, 12, 25))  // False
+/// ```
+pub fn has_time(dt: DateTime) -> Bool {
+  case dt.hour, dt.minute {
+    None, None -> False
+    _, _ -> True
+  }
+}
+
+/// Check if a DateTime has a date component (year, month, day)
+///
+/// ## Examples
+/// ```gleam
+/// has_date(date(2024, 12, 25))  // True
+/// has_date(time(14, 30))  // False
+/// ```
+pub fn has_date(dt: DateTime) -> Bool {
+  case dt.year, dt.month, dt.day {
+    None, None, None -> False
+    _, _, _ -> True
+  }
+}
+
+/// Check if a DateTime is fully specified (has both date and time)
+///
+/// ## Examples
+/// ```gleam
+/// is_complete(datetime(2024, 12, 25, 14, 30))  // True
+/// is_complete(time(14, 30))  // False
+/// is_complete(date(2024, 12, 25))  // False
+/// ```
+pub fn is_complete(dt: DateTime) -> Bool {
+  has_time(dt) && has_date(dt)
+}
+
+/// Check if a DateTime represents a relative expression
+///
+/// ## Examples
+/// ```gleam
+/// is_relative(relative(Tomorrow))  // True
+/// is_relative(date(2024, 12, 25))  // False
+/// ```
+pub fn is_relative(dt: DateTime) -> Bool {
+  case dt.relative {
+    Some(_) -> True
+    None -> False
+  }
 }
 
 // ============================================================================
@@ -218,7 +692,8 @@ pub type Token {
 }
 
 /// Create the lexer for tokenizing natural date input
-pub fn lexer() -> lexer.Lexer(Token, Nil) {
+// Lexer is internal implementation detail, not exposed in public API
+fn lexer() -> lexer.Lexer(Token, Nil) {
   let whitespace = lexer.whitespace(Nil)
 
   lexer.simple([
@@ -1157,10 +1632,44 @@ fn date_expression() -> Parser(ParsedDate, Token, e) {
 }
 
 // ============================================================================
-// PUBLIC API
+// PUBLIC API - Parsing
 // ============================================================================
 
-/// Parse a natural language date/time string
+/// Parse a natural language date/time string into a structured result.
+///
+/// This is the main entry point for the library. It accepts any natural language
+/// date/time expression and returns a typed representation of what was parsed.
+///
+/// ## Examples
+/// ```gleam
+/// parse("tomorrow at 5pm")
+/// // => Ok(SinglePoint(DateTime { hour: Some(17), relative: Some(Tomorrow), .. }))
+///
+/// parse("next Tuesday and Thursday at 3pm")
+/// // => Ok(MultiplePoints([DateTime { .. }, DateTime { .. }]))
+///
+/// parse("Monday 9am-5pm")
+/// // => Ok(Range(TimeRange { start: .., end: .. }))
+///
+/// parse("every Tuesday at 2pm")
+/// // => Ok(Recurring(RecurringEvent { .. }))
+/// ```
+///
+/// ## Supported Expressions
+/// - **Times**: "5pm", "14:30", "noon", "midnight"
+/// - **Relative dates**: "today", "tomorrow", "yesterday", "next Tuesday"
+/// - **Specific dates**: "2024-12-25", "December 25", "12/25/2024"
+/// - **Ranges**: "9am-5pm", "Monday-Friday", "Dec 1-15"
+/// - **Multiple points**: "Tuesday and Thursday", "9am, 2pm, and 5pm"
+/// - **Recurring**: "every Monday", "daily at 9am", "every weekday"
+/// - **Offsets**: "in 5 minutes", "3 days ago", "2 weeks from now"
+///
+/// ## Error Handling
+/// Returns an error if the input cannot be parsed, with a message describing
+/// what went wrong. Common errors include:
+/// - Unrecognized date/time format
+/// - Invalid number combinations
+/// - Incomplete expressions
 pub fn parse(input: String) -> Result(ParsedDate, String) {
   let lex = lexer()
 
@@ -1168,52 +1677,205 @@ pub fn parse(input: String) -> Result(ParsedDate, String) {
     Ok(tokens) -> {
       case nibble.run(tokens, date_expression()) {
         Ok(result) -> Ok(result)
-        Error(e) -> Error("Parse error: " <> string.inspect(e))
+        Error(_) ->
+          Error(
+            "Could not parse date/time expression. Please check the format and try again.\n"
+            <> "Examples: 'tomorrow at 5pm', 'next Tuesday', 'every Monday at 9am'",
+          )
       }
     }
-    Error(e) -> Error("Lexer error: " <> string.inspect(e))
+    Error(_) ->
+      Error(
+        "Could not understand the input. Please use common date/time words and numbers.\n"
+        <> "Examples: 'tomorrow', '5pm', 'next week', '2024-12-25'",
+      )
   }
 }
 
-/// Helper to format a DateTime for display
+// ============================================================================
+// PUBLIC API - Formatting
+// ============================================================================
+
+/// Format a DateTime as a human-readable string.
+///
+/// This function converts a DateTime back into readable text. It handles
+/// various combinations of date, time, and relative expressions.
+///
+/// ## Examples
+/// ```gleam
+/// format_datetime(time(14, 30))
+/// // => "Today at 14:30"
+///
+/// format_datetime(datetime(2024, 12, 25, 10, 0))
+/// // => "2024-12-25 at 10:00"
+///
+/// format_datetime(relative(Tomorrow))
+/// // => "Tomorrow"
+/// ```
 pub fn format_datetime(dt: DateTime) -> String {
-  let year_str = case dt.year {
-    Some(y) -> int.to_string(y)
-    None -> "????"
-  }
-  let month_str = case dt.month {
-    Some(m) -> int.to_string(m)
-    None -> "??"
-  }
-  let day_str = case dt.day {
-    Some(d) -> int.to_string(d)
-    None -> "??"
-  }
-  let hour_str = case dt.hour {
-    Some(h) -> int.to_string(h)
-    None -> "??"
-  }
-  let minute_str = case dt.minute {
-    Some(m) -> {
-      let s = int.to_string(m)
-      case string.length(s) {
-        1 -> "0" <> s
-        _ -> s
+  // Handle relative expressions first
+  case dt.relative {
+    Some(Today) -> format_time_part(dt) |> prepend_if_present("Today at ")
+    Some(Tomorrow) -> format_time_part(dt) |> prepend_if_present("Tomorrow at ")
+    Some(Yesterday) ->
+      format_time_part(dt) |> prepend_if_present("Yesterday at ")
+    Some(NextWeekday(day)) ->
+      format_time_part(dt)
+      |> prepend_if_present("Next " <> format_weekday(day) <> " at ")
+    Some(LastWeekday(day)) ->
+      format_time_part(dt)
+      |> prepend_if_present("Last " <> format_weekday(day) <> " at ")
+    Some(rel) -> format_relative(rel)
+    None -> {
+      let date_part = format_date_part(dt)
+      let time_part = format_time_part(dt)
+      case date_part, time_part {
+        "", "" -> "(no date/time specified)"
+        "", time -> time
+        date, "" -> date
+        date, time -> date <> " at " <> time
       }
     }
-    None -> "??"
-  }
-
-  let date_part = year_str <> "-" <> month_str <> "-" <> day_str
-  let time_part = hour_str <> ":" <> minute_str
-
-  case dt.relative {
-    Some(rel) -> date_part <> " " <> time_part <> " (" <> string.inspect(rel) <> ")"
-    None -> date_part <> " " <> time_part
   }
 }
 
-pub fn main() -> Nil {
-  // This will be filled in with examples
-  todo as "main function not yet implemented"
+/// Format a TimeRange as a human-readable string.
+///
+/// ## Examples
+/// ```gleam
+/// format_range(range(time(9, 0), time(17, 0)))
+/// // => "Today 9:00 - 17:00"
+/// ```
+pub fn format_range(tr: TimeRange) -> String {
+  format_datetime(tr.start) <> " to " <> format_datetime(tr.end)
+}
+
+/// Format a ParsedDate as a human-readable string.
+///
+/// This is a convenience function that formats any ParsedDate variant.
+///
+/// ## Examples
+/// ```gleam
+/// format(SinglePoint(time(14, 30)))
+/// // => "Today at 14:30"
+///
+/// format(Range(..))
+/// // => "Today 9:00 to 17:00"
+/// ```
+pub fn format(parsed: ParsedDate) -> String {
+  case parsed {
+    SinglePoint(dt) -> format_datetime(dt)
+    MultiplePoints(dates) ->
+      list.map(dates, format_datetime)
+      |> string.join(", ")
+    Range(tr) -> format_range(tr)
+    MultipleRanges(ranges) ->
+      list.map(ranges, format_range)
+      |> string.join("; ")
+    Recurring(re) -> format_recurring(re)
+  }
+}
+
+// ============================================================================
+// FORMATTING HELPERS (Internal)
+// ============================================================================
+
+fn format_date_part(dt: DateTime) -> String {
+  case dt.year, dt.month, dt.day {
+    Some(y), Some(m), Some(d) -> {
+      int.to_string(y)
+      <> "-"
+      <> pad_zero(m)
+      <> "-"
+      <> pad_zero(d)
+    }
+    _, Some(m), Some(d) -> int.to_string(m) <> "/" <> int.to_string(d)
+    _, _, _ -> ""
+  }
+}
+
+fn format_time_part(dt: DateTime) -> String {
+  case dt.hour, dt.minute {
+    Some(h), Some(m) -> int.to_string(h) <> ":" <> pad_zero(m)
+    Some(h), None -> int.to_string(h) <> ":00"
+    None, _ -> ""
+  }
+}
+
+fn format_weekday(day: Weekday) -> String {
+  case day {
+    Monday -> "Monday"
+    Tuesday -> "Tuesday"
+    Wednesday -> "Wednesday"
+    Thursday -> "Thursday"
+    Friday -> "Friday"
+    Saturday -> "Saturday"
+    Sunday -> "Sunday"
+  }
+}
+
+fn format_relative(rel: RelativeTime) -> String {
+  case rel {
+    Now -> "Now"
+    Today -> "Today"
+    Tomorrow -> "Tomorrow"
+    Yesterday -> "Yesterday"
+    MinutesAgo(n) -> int.to_string(n) <> " minutes ago"
+    MinutesFromNow(n) -> "in " <> int.to_string(n) <> " minutes"
+    HoursAgo(n) -> int.to_string(n) <> " hours ago"
+    HoursFromNow(n) -> "in " <> int.to_string(n) <> " hours"
+    DaysAgo(n) -> int.to_string(n) <> " days ago"
+    DaysFromNow(n) -> "in " <> int.to_string(n) <> " days"
+    WeeksAgo(n) -> int.to_string(n) <> " weeks ago"
+    WeeksFromNow(n) -> "in " <> int.to_string(n) <> " weeks"
+    MonthsAgo(n) -> int.to_string(n) <> " months ago"
+    MonthsFromNow(n) -> "in " <> int.to_string(n) <> " months"
+    YearsAgo(n) -> int.to_string(n) <> " years ago"
+    YearsFromNow(n) -> "in " <> int.to_string(n) <> " years"
+    NextWeekday(day) -> "Next " <> format_weekday(day)
+    LastWeekday(day) -> "Last " <> format_weekday(day)
+    ThisWeekday(day) -> "This " <> format_weekday(day)
+  }
+}
+
+fn format_recurring(re: RecurringEvent) -> String {
+  let pattern_str = case re.pattern {
+    Daily -> "Daily"
+    Weekly -> "Weekly"
+    Monthly -> "Monthly"
+    Yearly -> "Yearly"
+    EveryWeekday(days) ->
+      "Every "
+      <> {
+        list.map(days, format_weekday)
+        |> string.join(", ")
+      }
+    EveryNDays(n) -> "Every " <> int.to_string(n) <> " days"
+    EveryNWeeks(n) -> "Every " <> int.to_string(n) <> " weeks"
+    EveryNMonths(n) -> "Every " <> int.to_string(n) <> " months"
+    NthWeekdayOfMonth(n, day) ->
+      int.to_string(n) <> "th " <> format_weekday(day) <> " of each month"
+  }
+
+  let time_str = case re.time.hour {
+    Some(_) -> " at " <> format_time_part(re.time)
+    None -> ""
+  }
+
+  pattern_str <> time_str
+}
+
+fn pad_zero(n: Int) -> String {
+  let s = int.to_string(n)
+  case string.length(s) {
+    1 -> "0" <> s
+    _ -> s
+  }
+}
+
+fn prepend_if_present(suffix: String, prefix: String) -> String {
+  case suffix {
+    "" -> string.drop_right(prefix, 4)  // Remove " at " if no time
+    _ -> prefix <> suffix
+  }
 }
